@@ -1,23 +1,23 @@
-﻿using System.Buffers;
+using System.Buffers;
 using Common.Utilities;
 
 namespace Common.Packets.Lobby;
 
-public class LobbyInfoPacket : AbstractPacket
+public class JoinLobbyPacket : AbstractPacket
 {
     private const int LobbyIdSizeBytes = sizeof(int);
-
+    
     public override int PacketSizeBytes => base.PacketSizeBytes + LobbyIdSizeBytes;
-    public override PacketType PacketType => PacketType.LobbyInfo;
+    public override PacketType PacketType => PacketType.JoinLobby;
     public int LobbyId { get; private set; }
     
-    public LobbyInfoPacket() { }
+    public JoinLobbyPacket() { }
 
-    public LobbyInfoPacket(int lobbyId, ulong id) : base(id)
+    public JoinLobbyPacket(int lobbyId, ulong id) : base(id)
     {
         LobbyId = lobbyId;
     }
-    
+
     public override byte[] Encode()
     {
         var basePacketBytes = base.Encode();
@@ -39,9 +39,8 @@ public class LobbyInfoPacket : AbstractPacket
     }
 
     // todo little endian validate data length
-    public override void Load(ReadOnlySequence<byte> buffer)
+    internal override void Load(ReadOnlySequence<byte> buffer)
     {
-        base.Load(buffer);
         var slice = buffer
             .Slice(PacketBaseSizeBytes, LobbyIdSizeBytes)
             .FirstSpan;
@@ -54,6 +53,6 @@ public class LobbyInfoPacket : AbstractPacket
         var data = BitConverter.ToInt32(slice);
         LobbyId = data;
     }
-
+    
     public override string ToString() => $"{{ PacketType: {PacketType}, Id: {Id}, LobbyId: {LobbyId} }}";
 }

@@ -147,7 +147,7 @@ public class ServerConnectionHandler(string address, int port)
           Console.WriteLine($"Received packet: {packet}");
           switch (packet.PacketType)
           {
-               case PacketType.LobbyInfo:
+               case PacketType.LobbyJoinInformation:
                case PacketType.Denied:
                case PacketType.Accepted:
                {

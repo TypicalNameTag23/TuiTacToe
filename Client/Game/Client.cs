@@ -3,6 +3,7 @@ using Client.Game.Views;
 using Client.Ssh;
 using Client.Ssh.Parsing;
 using Common.Packets;
+using Common.Packets.Leaderboard;
 using Common.Packets.Lobby;
 using FxSsh;
 using FxSsh.Services;
@@ -104,14 +105,14 @@ public class Client : IDisposable
 
     private void OnCreateLobbyClick()
     {
-        var packet = new LobbyCreatePacket(AbstractPacket.NextPacketId());
+        var packet = new CreateLobbyPacket(AbstractPacket.NextPacketId());
         if (!_serverConnectionHandler.TrySendAsync(packet).Result)
         {
             return;
         }
 
         var response = _serverConnectionHandler.GetResponseAsync(packet.Id).Result;
-        if (response is not { PacketType: PacketType.LobbyInfo })
+        if (response is not { PacketType: PacketType.LobbyCreationInformation })
         {
             return;
         }
@@ -133,7 +134,7 @@ public class Client : IDisposable
     private void OnJoinButtonClick(string code)
     {
         if (!_serverConnectionHandler.TrySendAsync(
-                new LobbyJoinPacket(
+                new JoinLobbyPacket(
                     int.Parse(code),
                     AbstractPacket.NextPacketId())).Result) // todo force int only
         {
