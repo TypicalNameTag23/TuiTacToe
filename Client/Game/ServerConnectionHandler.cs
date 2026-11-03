@@ -1,9 +1,9 @@
 using System.Buffers;
 using System.Net.Sockets;
+using Common;
 using Common.Packets;
 using Common.Packets.Generic;
 using Common.Utilities;
-using Server;
 
 namespace Client.Game;
 

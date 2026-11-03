@@ -2,9 +2,9 @@
 
 public static class Program
 {
-    public static void Main(string[] args)
+    public static void Main()
     {
-        var server = new global::Server.Server();
+        var server = new Server();
         Console.CancelKeyPress += (_, _) => server.Stop();
         
         server.Start();

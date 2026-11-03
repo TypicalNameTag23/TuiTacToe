@@ -1,7 +1,6 @@
 using Painter.Drawables;
-using Painter.Drawing;
 
-namespace SshThing.Views;
+namespace Client.Game.Views;
 
 public class LeaderboardView : Drawable
 {

@@ -2,7 +2,7 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 
-namespace Server;
+namespace Common;
 
 public class NetworkStreamProcessor(NetworkStream stream, Func<ReadOnlySequence<byte>, int> processData)
 {

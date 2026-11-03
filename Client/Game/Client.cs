@@ -1,4 +1,5 @@
 using Client.Game.Drawables;
+using Client.Game.Views;
 using Client.Ssh;
 using Client.Ssh.Parsing;
 using Common.Packets;
@@ -7,8 +8,6 @@ using FxSsh;
 using FxSsh.Services;
 using Painter;
 using Painter.Drawables;
-using SshThing;
-using SshThing.Views;
 
 namespace Client.Game;
 
