@@ -1,4 +1,4 @@
-namespace Common.Packets;
+namespace Common.Packets.Leaderboard;
 
 public class ViewLeaderboardPacket : AbstractPacket
 {

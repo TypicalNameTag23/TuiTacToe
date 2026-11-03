@@ -3,6 +3,9 @@ using Common.Utilities;
 
 namespace Common.Packets;
 
+/// <summary>
+/// Packet abstract base class with common functionality needed by all packets
+/// </summary>
 public abstract class AbstractPacket
 {
     // todo hack
@@ -11,6 +14,10 @@ public abstract class AbstractPacket
     public const int PacketTypeSizeBytes = sizeof(short);
     public const int IdSizeBytes = sizeof(ulong);
 
+    /// <summary>
+    /// The size of the packet in bytes
+    /// </summary>
+    /// todo change to bits, not everything is byte aligned
     public virtual int PacketSizeBytes => PacketBaseSizeBytes;
     
     /// <summary>
@@ -37,7 +44,7 @@ public abstract class AbstractPacket
     }
     
     /// <summary>
-    /// Encodes the <see cref="Message"/> into a byte array
+    /// Encodes this packet into a byte array
     /// </summary>
     /// <returns>The byte array</returns>
     public virtual byte[] Encode()
@@ -69,7 +76,7 @@ public abstract class AbstractPacket
     /// Reads in data from the buffer and populates the packet
     /// </summary>
     /// <param name="buffer">The buffer to read from</param>
-    public virtual void Load(ReadOnlySequence<byte> buffer)
+    internal virtual void Load(ReadOnlySequence<byte> buffer)
     {
         var slice = buffer
             .Slice(PacketTypeSizeBytes, IdSizeBytes)

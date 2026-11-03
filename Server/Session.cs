@@ -79,17 +79,17 @@ public class Session : IDisposable
           Console.WriteLine($"Received packet: {packet}");
           switch (packet.PacketType)
           {
-               case PacketType.LobbyCreate:
+               case PacketType.CreateLobby:
                {
                     CreateLobby(packet.Id);
                     break;
                }
-               case PacketType.LobbyDisconnect:
+               case PacketType.LeaveLobby:
                {
                     DisconnectFromLobby(packet.Id);
                     break;
                }
-               case PacketType.LobbyJoin:
+               case PacketType.JoinLobby:
                {
                     break;
                }
@@ -135,6 +135,6 @@ public class Session : IDisposable
           }
                     
           _gameSession = _getGameSession(this);
-          _client!.SendAsync(new LobbyInfoPacket(_gameSession.LobbyId, id)).Wait();
+          _client!.SendAsync(new LobbyCreationInformationPacket(_gameSession.LobbyId, id)).Wait();
      }
 }
