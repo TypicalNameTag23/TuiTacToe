@@ -3,6 +3,7 @@ using Client.Game.Views;
 using Client.Ssh;
 using Client.Ssh.Parsing;
 using Common.Packets;
+using Common.Packets.Handshake;
 using Common.Packets.Leaderboard;
 using Common.Packets.Lobby;
 using FxSsh;
@@ -18,15 +19,17 @@ public class Client : IDisposable
     private const string BackendServerAddress = "127.0.0.1";
     private const int BackendServerPort = 4343;
 
-    private CancellationTokenSource _cancellationTokenSource;
     private DisconnectedView _disconnectedView;
+    private LoginView _loginView;
     private ContentControl _contentDisplay;
-    private WelcomeView _welcomeView;
+    private MainPageView _mainPageView;
     private Application _app;
 
+    private readonly Session _session;
     private readonly PtyArgs _args;
+    
+    private CancellationTokenSource _cancellationTokenSource;
     private ServerConnectionHandler _serverConnectionHandler;
-    private Session _session;
 
     public Client(PtyArgs args, Session session)
     {
@@ -37,21 +40,12 @@ public class Client : IDisposable
     public async Task StartAsync()
     {
         #region Setup application views
-        _welcomeView = new WelcomeView
-        {
-            OnCreateLobbyClick = OnCreateLobbyClick,
-            OnJoinLobbyClick = OnJoinLobbyClick,
-            OnLeaderboardClick = OnLeaderboardClick
-        };
-        
-        _disconnectedView = new DisconnectedView
-        {
-            OnReconnectButtonClick = OnReconnectClick
-        };
-        
+        _loginView = new LoginView(OnLoginButtonClick, OnSignUpButtonClick);
+        _mainPageView = new MainPageView(OnCreateLobbyClick, OnJoinLobbyClick, OnLeaderboardClick);
+        _disconnectedView = new DisconnectedView(OnReconnectClick);
         _contentDisplay = new ContentControl
         {
-            Content = _welcomeView
+            Content = _loginView
         };
         #endregion
 
@@ -82,6 +76,44 @@ public class Client : IDisposable
         applicationThread.Start();
     }
 
+    private void OnLoginButtonClick(string arg1, string arg2)
+    {
+        var loginPacket = new LoginPacket();
+        if (!_serverConnectionHandler.TrySendAsync(loginPacket).Result)
+        {
+            return;
+        }
+
+        var response = _serverConnectionHandler.GetResponseAsync(loginPacket.Id).Result;
+        if (response is not { PacketType: PacketType.Accepted })
+        {
+            return;
+        }
+
+        // extract inner packet
+
+        _contentDisplay.Content = _mainPageView;
+    }
+
+    private void OnSignUpButtonClick(string arg1, string arg2)
+    {
+        var loginPacket = new RegisterPacket();
+        if (!_serverConnectionHandler.TrySendAsync(loginPacket).Result)
+        {
+            return;
+        }
+
+        var response = _serverConnectionHandler.GetResponseAsync(loginPacket.Id).Result;
+        if (response is not { PacketType: PacketType.Accepted })
+        {
+            return;
+        }
+
+        // extract inner packet
+
+        _contentDisplay.Content = _mainPageView;
+    }
+
     public async Task DisconnectAsync()
     {
         await _serverConnectionHandler.DisconnectAsync();
@@ -99,7 +131,7 @@ public class Client : IDisposable
         _cancellationTokenSource = new CancellationTokenSource();
         if (_serverConnectionHandler.TryConnectAsync(_cancellationTokenSource).Result)
         {
-            _contentDisplay.Content = _welcomeView;
+            _contentDisplay.Content = _mainPageView;
         }
     }
 
@@ -176,7 +208,7 @@ public class Client : IDisposable
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) =>
         {
-            _contentDisplay.Content = _welcomeView;
+            _contentDisplay.Content = _mainPageView;
             _app.RemoveGlobalBoundKey(CtrlCKey);
             _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
         });

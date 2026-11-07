@@ -14,7 +14,7 @@ public class JoinLobbyView : Drawable
         _lobbyCodeTextBox = new TextBox();
         _joinButton = new Button
         {
-            FocusedColor = new Color(53, 53, 53),
+            FocusedColor = Defaults.ButtonFocusedColor,
             Content = new TextBlock
             {
                 Text = "Join",
@@ -29,12 +29,16 @@ public class JoinLobbyView : Drawable
     private void BuildDrawable()
     {
         Attach(
-            new Grid { RowDefinitions = RowDefinition.Of("*, 1") }
+            new Grid
+                {
+                    RowDefinitions = RowDefinition.Of("*, 1")
+                }
                 .SetContent(
                     new Grid
                         {
-                            RowDefinitions = RowDefinition.Of("*, 3, 2, 1, *"),
-                            ColumnDefinitions = ColumnDefinition.Of("*, 1.5*, *")
+                            RowDefinitions = RowDefinition.Of(
+                                $"*, {Defaults.DefaultBlockSize}, {Defaults.DefaultSpacing}, {Defaults.SmallBlockSize}, *"),
+                            ColumnDefinitions = Defaults.Centered
                         }
                         .SetContent(new Panel
                         {

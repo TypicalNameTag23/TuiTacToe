@@ -79,6 +79,11 @@ public class Session : IDisposable
           Console.WriteLine($"Received packet: {packet}");
           switch (packet.PacketType)
           {
+               case PacketType.OpenConnection:
+               {
+                    await _client.SendAsync(new AcceptedPacket(packet.Id));
+                    break;
+               }
                case PacketType.CreateLobby:
                {
                     CreateLobby(packet.Id);
