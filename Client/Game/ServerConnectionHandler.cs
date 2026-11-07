@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using Common;
 using Common.Packets;
 using Common.Packets.Generic;
+using Common.Packets.Handshake;
 using Common.Utilities;
 
 namespace Client.Game;
@@ -31,9 +32,20 @@ public class ServerConnectionHandler(string address, int port)
           {
                _server = new TcpClient();
                await _server.ConnectAsync(address, port);
-
                _networkStreamProcessor = new NetworkStreamProcessor(_server.GetStream(), ProcessIncomingData);
                _ = _networkStreamProcessor.StartAsync(cancellationTokenSource.Token);
+
+               var openConnectionPacket = new OpenConnectionPacket();
+               await TrySendAsync(openConnectionPacket);
+               var response = await GetResponseAsync(openConnectionPacket.Id);
+               if (response is not { PacketType: PacketType.Accepted })
+               {
+                    Console.WriteLine("Failed to connect to the backend server, server responded with non Accepted packet!");
+                    
+                    await CloseConnectionAsync();
+                    return false;
+               }
+
           }
           catch (SocketException e)
           {

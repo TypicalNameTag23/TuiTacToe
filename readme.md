@@ -1,10 +1,9 @@
-# Running the Code
-## Prerequisites
+# Prerequisites
 - .net 10 SDK installed on your machine
 - postgresql installed on your machine
 - postgresql server running on your machine
 
-## Running
+# Running
 ```
 git clone git@github.com:TypicalNameTag23/TuiTacToe.git
 cd TuiTacToe

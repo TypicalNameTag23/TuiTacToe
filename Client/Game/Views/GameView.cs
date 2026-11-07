@@ -13,20 +13,11 @@ public class GameView : Drawable
                 {
                     RowDefinitions = RowDefinition.Of("*, 1")
                 }.SetContent(
-                    new Panel
-                        {
-                            Content = [
-                                // new HsvColorSpaceVisualizer()
-                                // {
-                                //     Focusable = false
-                                // },
-                                new Grid
-                                {
-                                    RowDefinitions = RowDefinition.Of("*, 11, *"),
-                                    ColumnDefinitions = ColumnDefinition.Of("*, 25, *")
-                                }.SetContent(new TicTacToeBoardDrawable(), row: 1, column: 1)
-                            ]
-                        }, row: 0)
+                    new Grid
+                    {
+                        RowDefinitions = RowDefinition.Of("*, 11, *"),
+                        ColumnDefinitions = ColumnDefinition.Of("*, 25, *")
+                    }.SetContent(new TicTacToeBoardDrawable(), row: 1, column: 1)
                 .SetContent(
                     new TextBlock
                     {
@@ -34,6 +25,6 @@ public class GameView : Drawable
                         OverflowStyle = OverflowStyle.Cutoff,
                         BackgroundColor = Color.Black
                     }, row: 1)
-        );   
+        ));   
     }
 }

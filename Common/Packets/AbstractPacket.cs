@@ -30,7 +30,10 @@ public abstract class AbstractPacket
     /// </summary>
     public ulong Id { get; set; }
 
-    public AbstractPacket() { }
+    public AbstractPacket()
+    {
+        Id = NextPacketId();
+    }
 
     public AbstractPacket(ulong id)
     {

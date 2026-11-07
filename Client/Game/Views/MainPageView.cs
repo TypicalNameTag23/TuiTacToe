@@ -4,18 +4,16 @@ using Painter.Drawing;
 
 namespace Client.Game.Views;
 
-public class WelcomeView : Drawable
+public class MainPageView : Drawable
 {
-    public Action OnCreateLobbyClick { get; set; }
-    public Action OnJoinLobbyClick { get; set; }
-    public Action OnLeaderboardClick { get; set; }
-
-    public WelcomeView()
+    public MainPageView(
+        Action onCreateLobbyClick,
+        Action onJoinLobbyClick,
+        Action onLeaderboardClick)
     {
         var createLobbyButton = new Button
         {
-            Height = 3,
-            FocusedColor = new Color(53, 53, 53),
+            FocusedColor = Defaults.ButtonFocusedColor,
             Content = new TextBlock
             {
                 Text = "Create Lobby",
@@ -23,12 +21,11 @@ public class WelcomeView : Drawable
                 Y = 1
             }
         };
-        createLobbyButton.OnClickEvent += (_, _) => OnCreateLobbyClick();
+        createLobbyButton.OnClickEvent += (_, _) => onCreateLobbyClick();
 
         var joinLobbyButton = new Button
         {
-            Height = 3,
-            FocusedColor = new Color(53, 53, 53),
+            FocusedColor = Defaults.ButtonFocusedColor,
             Content = new TextBlock
             {
                 Text = "Join Lobby",
@@ -36,12 +33,11 @@ public class WelcomeView : Drawable
                 Y = 1
             }
         };
-        joinLobbyButton.OnClickEvent += (_, _) => OnJoinLobbyClick();
+        joinLobbyButton.OnClickEvent += (_, _) => onJoinLobbyClick();
 
         var leaderboardButton = new Button
         {
-            Height = 3,
-            FocusedColor = new Color(53, 53, 53),
+            FocusedColor = Defaults.ButtonFocusedColor,
             Content = new TextBlock
             {
                 Text = "Leaderboard",
@@ -49,7 +45,7 @@ public class WelcomeView : Drawable
                 Y = 1
             }
         };
-        leaderboardButton.OnClickEvent += (_, _) => OnLeaderboardClick();
+        leaderboardButton.OnClickEvent += (_, _) => onLeaderboardClick();
         
         Attach(
             new Grid
@@ -60,7 +56,7 @@ public class WelcomeView : Drawable
                     new Grid 
                         {
                             RowDefinitions = RowDefinition.Of("*, 3, 2, 3, 2, 3, 2, 3, *"),
-                            ColumnDefinitions = ColumnDefinition.Of("*, 1.5*, *")
+                            ColumnDefinitions = Defaults.Centered
                         }
                         .SetContent(new Panel
                         {
@@ -78,7 +74,6 @@ public class WelcomeView : Drawable
                                 {
                                     Text = "TUI-Tac-Toe",
                                     Alignment = Alignment.Center,
-                                    Height = 1,
                                     Y = 1,
                                 }
                             ]

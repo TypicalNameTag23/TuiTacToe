@@ -5,20 +5,24 @@ namespace Client.Game.Views;
 
 public class DisconnectedView : Drawable
 {
-    public Action OnReconnectButtonClick { get; set; }
-
-    public DisconnectedView()
+    public DisconnectedView(Action onReconnectButtonClick)
     {
         var reconnectButton = new Button
         {
-            Content = new TextBlock { Text = "Reconnect" }
+            FocusedColor = Defaults.ButtonFocusedColor,
+            Content = new TextBlock
+            {
+                Text = "Reconnect",
+                Alignment = Alignment.Center,
+                Y = 1
+            }
         };
         
-        reconnectButton.OnClick((_, _) => OnReconnectButtonClick!.Invoke());
+        reconnectButton.OnClick((_, _) => onReconnectButtonClick.Invoke());
         
         Attach(new Grid
             {
-                RowDefinitions = RowDefinition.Of("*, 1, 1, 3, *"),
+                RowDefinitions = RowDefinition.Of($"*, 1, {Defaults.SmallSpacing}, {Defaults.DefaultBlockSize}, *"),
             }
             .SetContent(
                 new TextBlock
@@ -29,7 +33,7 @@ public class DisconnectedView : Drawable
             .SetContent(
                 new Grid
                 {
-                    ColumnDefinitions = ColumnDefinition.Of("*, 1.5*, *"),
+                    ColumnDefinitions = Defaults.Centered
                 }
                 .SetContent(reconnectButton, column: 1), row: 3)
         );
