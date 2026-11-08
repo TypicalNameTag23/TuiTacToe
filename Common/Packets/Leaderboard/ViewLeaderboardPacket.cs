@@ -6,5 +6,6 @@ public class ViewLeaderboardPacket : AbstractPacket
 
     public ViewLeaderboardPacket(ulong id) : base(id) { }
     
+    public override int PacketSizeBytes => PacketBaseSizeBytes;
     public override PacketType PacketType => PacketType.ViewLeaderboard;
 }

@@ -9,7 +9,7 @@ public abstract class BaseAuthenticationPacket : AbstractPacket
     private const int UsernameLengthSizeBytes = sizeof(short);
     private const int PasswordHashSizeBytes = 64;
     
-    public override int PacketSizeBytes => base.PacketSizeBytes + UsernameLengthSizeBytes + UsernameLength + PasswordHashSizeBytes;
+    public override int PacketSizeBytes => PacketBaseSizeBytes + UsernameLengthSizeBytes + UsernameLength + PasswordHashSizeBytes;
     
     public string Username { get; private set; }
     public short UsernameLength => (short) Username.Length;
@@ -52,21 +52,21 @@ public abstract class BaseAuthenticationPacket : AbstractPacket
 
     internal override bool Load(ReadOnlySequence<byte> buffer)
     {
-        if (!base.Load(buffer) || buffer.Length < base.PacketSizeBytes + UsernameLengthSizeBytes)
+        if (!base.Load(buffer) || buffer.Length < PacketBaseSizeBytes + UsernameLengthSizeBytes)
         {
             return false;
         }
         
-        var usernameLength = buffer.GetShort(base.PacketSizeBytes, UsernameLengthSizeBytes);
-        if (buffer.Length < base.PacketSizeBytes + UsernameLengthSizeBytes + usernameLength)
+        var usernameLength = buffer.GetShort(PacketBaseSizeBytes, UsernameLengthSizeBytes);
+        if (buffer.Length < PacketBaseSizeBytes + UsernameLengthSizeBytes + usernameLength)
         {
             return false;
         }
         
-        Username = buffer.GetString(base.PacketSizeBytes + UsernameLengthSizeBytes, usernameLength);
+        Username = buffer.GetString(PacketBaseSizeBytes + UsernameLengthSizeBytes, usernameLength);
         
         var passwordHashBytes = buffer
-            .Slice(base.PacketSizeBytes + UsernameLengthSizeBytes + usernameLength, PasswordHashSizeBytes)
+            .Slice(PacketBaseSizeBytes + UsernameLengthSizeBytes + usernameLength, PasswordHashSizeBytes)
             .FirstSpan;
         PasswordHash = [..passwordHashBytes];
 

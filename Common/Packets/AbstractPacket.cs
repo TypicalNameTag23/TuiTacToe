@@ -18,7 +18,7 @@ public abstract class AbstractPacket
     /// The size of the packet in bytes
     /// </summary>
     /// todo change to bits, not everything is byte aligned
-    public virtual int PacketSizeBytes => PacketBaseSizeBytes;
+    public abstract int PacketSizeBytes { get; }
     
     /// <summary>
     /// The <see cref="PacketType"/>

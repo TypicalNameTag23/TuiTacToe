@@ -10,7 +10,7 @@ public class LoginInformation : AbstractPacket
     
     public override PacketType PacketType => PacketType.LoginInformation;
 
-    public override int PacketSizeBytes => base.PacketSizeBytes + SessionIdSizeBytes;
+    public override int PacketSizeBytes => PacketBaseSizeBytes + SessionIdSizeBytes;
     public string SessionId { get; private set; }
     
     internal LoginInformation() { }
@@ -37,7 +37,7 @@ public class LoginInformation : AbstractPacket
             return false;
         }
         
-        SessionId = buffer.GetString(base.PacketSizeBytes, SessionIdSizeBytes);
+        SessionId = buffer.GetString(PacketBaseSizeBytes, SessionIdSizeBytes);
         
         return true;
     }

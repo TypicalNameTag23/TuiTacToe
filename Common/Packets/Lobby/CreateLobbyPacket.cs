@@ -6,5 +6,6 @@ public class CreateLobbyPacket : AbstractPacket
     
     public CreateLobbyPacket(ulong packetId) : base(packetId) { }
     
+    public override int PacketSizeBytes => PacketBaseSizeBytes;
     public override PacketType PacketType => PacketType.CreateLobby;
 }

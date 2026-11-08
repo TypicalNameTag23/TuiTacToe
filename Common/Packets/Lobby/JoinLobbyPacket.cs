@@ -7,7 +7,7 @@ public class JoinLobbyPacket : AbstractPacket
 {
     private const int LobbyIdSizeBytes = sizeof(int);
     
-    public override int PacketSizeBytes => base.PacketSizeBytes + LobbyIdSizeBytes;
+    public override int PacketSizeBytes => PacketBaseSizeBytes + LobbyIdSizeBytes;
     public override PacketType PacketType => PacketType.JoinLobby;
     public int LobbyId { get; private set; }
     
