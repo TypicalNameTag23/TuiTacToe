@@ -56,6 +56,7 @@ public class Server : IDisposable
             var session = new Session(
                 client, 
                 _leaderboardSource, 
+                CreateGameSession,
                 GetGameSession,
                 TryCreateUserAsync,
                 ValidatePasswordAsync);
@@ -68,6 +69,16 @@ public class Server : IDisposable
         }
     }
 
+    private GameSession? GetGameSession(int lobbyId)
+    {
+        if (!_gameSessionMap.TryGetValue(lobbyId, out var gameSession) || gameSession.Guest != null)
+        {
+            return null;
+        }
+        
+        return gameSession;
+    }
+
     private async Task<User?> ValidatePasswordAsync(string username, string password)
     {
         try
@@ -78,7 +89,7 @@ public class Server : IDisposable
                 return null;
             }
             
-            return !HashHelper.ValidatePassword(password, user.passwordHash) ? null : user;
+            return !HashHelper.ValidatePassword(password, user.PasswordHash) ? null : user;
         }
         catch (Exception e)
         {
@@ -110,7 +121,7 @@ public class Server : IDisposable
         return user;
     }
 
-    private GameSession GetGameSession(Session session)
+    private GameSession CreateGameSession(Session session)
     {
         if (_gameSessionMap.Count >= 999_990_000)
         {
@@ -123,8 +134,18 @@ public class Server : IDisposable
         {
             lobbyId = _random.Next(10000, 99999);
         }
+
+        var gameSession = new GameSession(lobbyId, session);
+        gameSession.OnGameCompleted += OnGameCompleted;
+        _gameSessionMap.Add(lobbyId, gameSession);
         
-        return new GameSession(lobbyId, session);
+        return gameSession;
+    }
+
+    private void OnGameCompleted(object? sender, Session e)
+    {
+        var gameSession = sender as GameSession;
+        _gameSessionMap.Remove(gameSession!.LobbyId);
     }
 
     private void OnSessionDisconnected(object? sender, EventArgs args)

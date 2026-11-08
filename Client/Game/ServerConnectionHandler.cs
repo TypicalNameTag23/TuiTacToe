@@ -19,6 +19,7 @@ public class ServerConnectionHandler(string address, int port)
      private TcpClient? _server;
 
      public EventHandler<EventArgs>? OnConnectionClosed;
+     public EventHandler<AbstractPacket>? OnPacketReceived;
      public bool Connected => _server != null;
      
      public async Task<bool> TryConnectAsync(CancellationTokenSource cancellationTokenSource)
@@ -157,6 +158,7 @@ public class ServerConnectionHandler(string address, int port)
                return 0;
           }
           
+          OnPacketReceived?.Invoke(this, packet!);
           HandlePacket(packet!);
           return packet!.PacketSizeBytes;
      }
@@ -173,6 +175,13 @@ public class ServerConnectionHandler(string address, int port)
                case PacketType.Accepted:
                {
                     _pendingPackets.Add(packet.Id, packet);
+                    break;
+               }
+               case PacketType.OpponentConnected:
+               case PacketType.OpponentDisconnected:
+               case PacketType.GameCompleted:
+               {
+                    OnPacketReceived?.Invoke(this, packet);
                     break;
                }
                case PacketType.CloseConnection:

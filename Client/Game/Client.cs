@@ -44,6 +44,7 @@ public class Client(PtyArgs args, Session session) : IDisposable
 
         _serverConnectionHandler = new ServerConnectionHandler(BackendServerAddress, BackendServerPort);
         _serverConnectionHandler.OnConnectionClosed += OnDisconnectedFromServer;
+        _serverConnectionHandler.OnPacketReceived += OnPacketReceived;
         await ConnectAsync();
         
         var applicationThread = new Thread(() =>
@@ -61,6 +62,19 @@ public class Client(PtyArgs args, Session session) : IDisposable
         });
         
         applicationThread.Start();
+    }
+
+    // like yeah idk this code is shit but whatever
+    private void OnPacketReceived(object? _, AbstractPacket packet)
+    {
+        if (packet is OpponentConnectedPacket opponentConnectedPacket)
+        {
+            
+        }
+        if (packet is OpponentDisconnectedPacket opponentDisconnectedPacket)
+        {
+            
+        }
     }
 
     public async Task DisconnectAsync()
@@ -190,18 +204,39 @@ public class Client(PtyArgs args, Session session) : IDisposable
 
     private void OnJoinLobbyClick()
     {
-        _contentDisplay.Content = new JoinLobbyView(OnJoinButtonClick);
+        if (_contentDisplay.Content is not MainPageView)
+        {
+            return;
+        }
+        
+        _contentDisplay.Content = new JoinLobbyView(OnJoinButtonClickAsync);
         UpdateCtrlCCloseKeyBindToBackKeyBind();
     }
     
-    private void OnJoinButtonClick(string code)
+    private async Task OnJoinButtonClickAsync(int code)
     {
-        if (!_serverConnectionHandler.TrySendAsync(new JoinLobbyPacket(int.Parse(code), AbstractPacket.NextPacketId())).Result) 
+        if (_contentDisplay.Content is not JoinLobbyView view)
         {
             return;
         }
 
+        view.DisableButtons();
+        var packet = new JoinLobbyPacket(code);
+        if (!await _serverConnectionHandler.TrySendAsync(packet)) 
+        {
+            return;
+        }
+
+        var response = await _serverConnectionHandler.GetResponseAsync(packet);
+        if (response is not { PacketType: PacketType.LobbyJoinInformation })
+        {
+            view.EnableButtons();
+            return;
+        }
+
         _app.QueueAction(() => _contentDisplay.Content = new GameView());
+        _app.RemoveGlobalBoundKey(CtrlCKey);
+        _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
     }
 
     private async Task OnLeaderboardClickAsync()

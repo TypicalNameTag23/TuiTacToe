@@ -7,9 +7,9 @@ namespace Client.Game.Views;
 public class JoinLobbyView : Drawable
 {
     private readonly Button _joinButton;
-    private readonly TextBox _lobbyCodeTextBox;
+    private readonly NumericalTextBox _lobbyCodeTextBox;
 
-    public JoinLobbyView(Action<string> joinButtonClick)
+    public JoinLobbyView(Func<int, Task> joinButtonClick)
     {
         _lobbyCodeTextBox = new NumericalTextBox { CharacterLimit = 9 };
         _joinButton = new Button
@@ -21,9 +21,19 @@ public class JoinLobbyView : Drawable
                 Alignment = Alignment.Center
             }
         };
-        _joinButton.OnClickEvent += (_, _) => joinButtonClick(_lobbyCodeTextBox.Text);
+        _joinButton.OnClickEvent += (_, _) => joinButtonClick(int.Parse(_lobbyCodeTextBox.Text));
 
         BuildDrawable();
+    }
+
+    public void EnableButtons()
+    {
+        _joinButton.Focusable = true;
+    }
+
+    public void DisableButtons()
+    {
+        _joinButton.Focusable = false;
     }
 
     private void BuildDrawable()

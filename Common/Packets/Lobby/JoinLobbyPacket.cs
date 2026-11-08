@@ -13,7 +13,7 @@ public class JoinLobbyPacket : AbstractPacket
     
     internal JoinLobbyPacket() { }
 
-    public JoinLobbyPacket(int lobbyId, ulong id) : base(id)
+    public JoinLobbyPacket(int lobbyId)
     {
         LobbyId = lobbyId;
     }
