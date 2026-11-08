@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Net.Sockets;
 using Common.Packets;
 using Common.Packets.Generic;
+using Common.Packets.Handshake;
 using Common.Packets.Lobby;
 using Common.Utilities;
 using Server.Data;
@@ -84,9 +85,15 @@ public class Session : IDisposable
                     await _client.SendAsync(new AcceptedPacket(packet.Id));
                     break;
                }
+               case PacketType.Register: // todo: check username availability and store password before sending session id
+               case PacketType.Login: // todo: check password correct before sending session id, check session id not in use elsewhere
+               {
+                    await _client.SendAsync(new LoginInformation(packet.Id, Random.Shared.GetString("1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOOPASDFGHJKLZXCVBNM", 64)));
+                    break;
+               }
                case PacketType.CreateLobby:
                {
-                    CreateLobby(packet.Id);
+                    await CreateLobby(packet.Id);
                     break;
                }
                case PacketType.LeaveLobby:
@@ -131,15 +138,15 @@ public class Session : IDisposable
           _gameSession.Disconnect(this);
      }
 
-     private void CreateLobby(ulong id)
+     private async Task CreateLobby(ulong id)
      {
           if (_gameSession != null)
           {
-               _client!.SendAsync(new DeniedPacket(id)).Wait();
+               await _client!.SendAsync(new DeniedPacket(id));
                return;
           }
                     
           _gameSession = _getGameSession(this);
-          _client!.SendAsync(new LobbyCreationInformationPacket(_gameSession.LobbyId, id)).Wait();
+          await _client!.SendAsync(new LobbyCreationInformationPacket(id, _gameSession.LobbyId));
      }
 }

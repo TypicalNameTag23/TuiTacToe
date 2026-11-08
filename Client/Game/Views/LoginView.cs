@@ -1,4 +1,5 @@
-﻿using Painter.Drawables;
+﻿using Client.Game.Drawables;
+using Painter.Drawables;
 using Painter.Drawing;
 
 namespace Client.Game.Views;
@@ -14,8 +15,8 @@ public class LoginView : Drawable
         Action<string, string> loginButtonClick,
         Action<string, string> signUpButtonClick)
     {
-        _usernameTextBox = new TextBox();
-        _passwordTextBox = new TextBox();
+        _usernameTextBox = new LimitedTextBox  { CharacterLimit = 32 };
+        _passwordTextBox = new PasswordTextBox { CharacterLimit = 32 };
         
         _loginButton = new Button
         {

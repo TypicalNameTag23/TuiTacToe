@@ -2,6 +2,7 @@ using Client.Game.Drawables;
 using Client.Game.Views;
 using Client.Ssh;
 using Client.Ssh.Parsing;
+using Common;
 using Common.Packets;
 using Common.Packets.Handshake;
 using Common.Packets.Leaderboard;
@@ -72,20 +73,32 @@ public class Client : IDisposable
         }
         #endregion
         
-        var applicationThread = new Thread(_app.Start);
+        var applicationThread = new Thread(() =>
+        {
+            try
+            {
+                _app.Start();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Something occured and the application crashed, disconnecting!");
+                Console.WriteLine(e);
+                _ = DisconnectAsync();
+            }
+        });
         applicationThread.Start();
     }
 
-    private void OnLoginButtonClick(string arg1, string arg2)
+    private void OnLoginButtonClick(string username, string password)
     {
-        var loginPacket = new LoginPacket();
+        var loginPacket = new LoginPacket(username, HashHelper.HashPassword(password));
         if (!_serverConnectionHandler.TrySendAsync(loginPacket).Result)
         {
             return;
         }
 
         var response = _serverConnectionHandler.GetResponseAsync(loginPacket.Id).Result;
-        if (response is not { PacketType: PacketType.Accepted })
+        if (response is not { PacketType: PacketType.LoginInformation })
         {
             return;
         }
@@ -95,16 +108,18 @@ public class Client : IDisposable
         _contentDisplay.Content = _mainPageView;
     }
 
-    private void OnSignUpButtonClick(string arg1, string arg2)
+    private void OnSignUpButtonClick(string username, string password)
     {
-        var loginPacket = new RegisterPacket();
+        var hash = HashHelper.HashPassword(password);
+        Console.WriteLine(hash);
+        var loginPacket = new RegisterPacket(username, hash);
         if (!_serverConnectionHandler.TrySendAsync(loginPacket).Result)
         {
             return;
         }
 
         var response = _serverConnectionHandler.GetResponseAsync(loginPacket.Id).Result;
-        if (response is not { PacketType: PacketType.Accepted })
+        if (response is not { PacketType: PacketType.LoginInformation })
         {
             return;
         }
@@ -143,13 +158,13 @@ public class Client : IDisposable
             return;
         }
 
-        var response = _serverConnectionHandler.GetResponseAsync(packet.Id).Result;
-        if (response is not { PacketType: PacketType.LobbyCreationInformation })
-        {
-            return;
-        }
+        // var response = _serverConnectionHandler.GetResponseAsync(packet.Id).Result;
+        // if (response is not { PacketType: PacketType.LobbyCreationInformation })
+        // {
+            // return;
+        // }
         
-        Console.WriteLine(response);
+        // Console.WriteLine(response);
         
         _contentDisplay.Content = new GameView();
         UpdateCtrlCKeyBind();

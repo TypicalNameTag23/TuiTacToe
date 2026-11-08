@@ -1,4 +1,5 @@
 ﻿using Client.Ssh;
+using Common.Packets.Handshake;
 
 namespace Client;
 

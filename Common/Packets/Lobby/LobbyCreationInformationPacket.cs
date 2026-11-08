@@ -11,9 +11,9 @@ public class LobbyCreationInformationPacket : AbstractPacket
     public override PacketType PacketType => PacketType.LobbyCreationInformation;
     public int LobbyId { get; private set; }
     
-    public LobbyCreationInformationPacket() { }
+    internal LobbyCreationInformationPacket() { }
 
-    public LobbyCreationInformationPacket(int lobbyId, ulong id) : base(id)
+    public LobbyCreationInformationPacket(ulong id, int lobbyId) : base(id)
     {
         LobbyId = lobbyId;
     }
@@ -21,39 +21,21 @@ public class LobbyCreationInformationPacket : AbstractPacket
     public override byte[] Encode()
     {
         var basePacketBytes = base.Encode();
-        var lobbyIdBytes = BitConverter.GetBytes(LobbyId);
-        if (BitConverter.IsLittleEndian)
-        {
-            Array.Reverse(lobbyIdBytes);
-        }
+        var lobbyIdBytes = BitConverters.GetBytesEndianIndependent(LobbyId);
 
         var encoded = new byte[PacketBaseSizeBytes + LobbyIdSizeBytes];
-        Buffer.BlockCopy(
-            basePacketBytes, 0, 
-            encoded, 0, PacketBaseSizeBytes);
-        Buffer.BlockCopy(
-            lobbyIdBytes, 0, 
-            encoded, PacketBaseSizeBytes, LobbyIdSizeBytes);
-
+        encoded.CopyInto(basePacketBytes, lobbyIdBytes);
         return encoded;
     }
 
-    // todo little endian validate data length
-    internal override void Load(ReadOnlySequence<byte> buffer)
+    internal override bool Load(ReadOnlySequence<byte> buffer)
     {
-        base.Load(buffer);
-        var slice = buffer
-            .Slice(PacketBaseSizeBytes, LobbyIdSizeBytes)
-            .FirstSpan;
-        
-        if (BitConverter.IsLittleEndian)
+        if (!base.Load(buffer) || buffer.Length < PacketBaseSizeBytes)
         {
-            slice = slice.Reversed();
+            return false;
         }
         
-        var data = BitConverter.ToInt32(slice);
-        LobbyId = data;
+        LobbyId = buffer.GetInt(PacketBaseSizeBytes, LobbyIdSizeBytes);
+        return false;
     }
-
-    public override string ToString() => $"{{ PacketType: {PacketType}, Id: {Id}, LobbyId: {LobbyId} }}";
 }

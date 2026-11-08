@@ -159,7 +159,9 @@ public class ServerConnectionHandler(string address, int port)
           Console.WriteLine($"Received packet: {packet}");
           switch (packet.PacketType)
           {
+               case PacketType.LoginInformation:
                case PacketType.LobbyJoinInformation:
+               case PacketType.LobbyCreationInformation:
                case PacketType.Denied:
                case PacketType.Accepted:
                {
@@ -168,7 +170,7 @@ public class ServerConnectionHandler(string address, int port)
                }
                case PacketType.CloseConnection:
                {
-                    OnConnectionClosed?.Invoke(this, EventArgs.Empty);
+                    CloseConnectionAsync().Wait();
                     break;
                }
                default:

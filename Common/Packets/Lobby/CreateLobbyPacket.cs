@@ -2,7 +2,7 @@ namespace Common.Packets.Lobby;
 
 public class CreateLobbyPacket : AbstractPacket
 {
-    public CreateLobbyPacket() { }
+    internal CreateLobbyPacket() { }
     
     public CreateLobbyPacket(ulong packetId) : base(packetId) { }
     

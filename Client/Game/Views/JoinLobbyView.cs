@@ -11,7 +11,7 @@ public class JoinLobbyView : Drawable
 
     public JoinLobbyView(Action<string> joinButtonClick)
     {
-        _lobbyCodeTextBox = new TextBox();
+        _lobbyCodeTextBox = new NumericalTextBox { CharacterLimit = 9 };
         _joinButton = new Button
         {
             FocusedColor = Defaults.ButtonFocusedColor,
