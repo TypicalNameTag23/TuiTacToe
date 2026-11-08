@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
+using Common;
 using Server.Data;
+using Server.Data.Models;
 
 namespace Server;
 
@@ -12,9 +14,9 @@ public class Server : IDisposable
     private TcpListener _listener;
     private readonly List<Session> _sessions = [];
     private readonly Dictionary<int, GameSession> _gameSessionMap = [];
-    private readonly Dictionary<Session, GameSession> _clientGameSessionMap = [];
     
     private ILeaderboardSource _leaderboardSource = new LeaderboardSource();
+    private IUserDatabase _userDatabase = new UserDatabase();
     private Random _random = new();
 
     public bool Running { get; private set; }
@@ -51,7 +53,12 @@ public class Server : IDisposable
         while (_listener.Pending())
         {
             var client = _listener.AcceptTcpClient();
-            var session = new Session(client, _leaderboardSource, CreateGameSession);
+            var session = new Session(
+                client, 
+                _leaderboardSource, 
+                GetGameSession,
+                TryCreateUserAsync,
+                ValidatePasswordAsync);
             session.OnDisconnect += OnSessionDisconnected;
             
             _sessions.Add(session);
@@ -61,7 +68,49 @@ public class Server : IDisposable
         }
     }
 
-    private GameSession CreateGameSession(Session session)
+    private async Task<User?> ValidatePasswordAsync(string username, string password)
+    {
+        try
+        {
+            var user = await _userDatabase.GetUserAsync(username);
+            if (user == null)
+            {
+                return null;
+            }
+            
+            return !HashHelper.ValidatePassword(password, user.passwordHash) ? null : user;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Failed to create user: " + username);
+            Console.WriteLine(e);
+
+            return null;
+        }
+    }
+
+    private async Task<User?> TryCreateUserAsync(string username, string password)
+    {
+        var user = new User(username, password);
+        try
+        {
+            if (!await _userDatabase.CreateUserAsync(user))
+            {
+                return null;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Failed to create user: " + username);
+            Console.WriteLine(e);
+
+            return null;
+        }
+        
+        return user;
+    }
+
+    private GameSession GetGameSession(Session session)
     {
         if (_gameSessionMap.Count >= 999_990_000)
         {

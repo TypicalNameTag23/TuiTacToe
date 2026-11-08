@@ -6,14 +6,17 @@ namespace Client.Game.Views;
 
 public class MainPageView : Drawable
 {
-    public MainPageView(
-        Action onCreateLobbyClick,
-        Action onJoinLobbyClick,
-        Action onLeaderboardClick)
+    private readonly Button _createLobbyButton;
+    private readonly Button _joinLobbyButton;
+    private readonly Button _leaderboardButton;
+
+    public MainPageView(Func<Task> onCreateLobbyClickAsync, Action onJoinLobbyClick, Func<Task> onLeaderboardClickAsync)
     {
-        var createLobbyButton = new Button
+        _createLobbyButton = new Button
         {
             FocusedColor = Defaults.ButtonFocusedColor,
+            UnfocusedColor = Defaults.ButtonUnfocusedColor,
+            DisabledColor = Defaults.ButtonDisabledColor,
             Content = new TextBlock
             {
                 Text = "Create Lobby",
@@ -21,11 +24,12 @@ public class MainPageView : Drawable
                 Y = 1
             }
         };
-        createLobbyButton.OnClickEvent += (_, _) => onCreateLobbyClick();
 
-        var joinLobbyButton = new Button
+        _joinLobbyButton = new Button
         {
             FocusedColor = Defaults.ButtonFocusedColor,
+            UnfocusedColor = Defaults.ButtonUnfocusedColor,
+            DisabledColor = Defaults.ButtonDisabledColor,
             Content = new TextBlock
             {
                 Text = "Join Lobby",
@@ -33,11 +37,12 @@ public class MainPageView : Drawable
                 Y = 1
             }
         };
-        joinLobbyButton.OnClickEvent += (_, _) => onJoinLobbyClick();
 
-        var leaderboardButton = new Button
+        _leaderboardButton = new Button
         {
             FocusedColor = Defaults.ButtonFocusedColor,
+            UnfocusedColor = Defaults.ButtonUnfocusedColor,
+            DisabledColor = Defaults.ButtonDisabledColor,
             Content = new TextBlock
             {
                 Text = "Leaderboard",
@@ -45,8 +50,30 @@ public class MainPageView : Drawable
                 Y = 1
             }
         };
-        leaderboardButton.OnClickEvent += (_, _) => onLeaderboardClick();
         
+        _createLobbyButton.OnClickEvent += (_, _) => onCreateLobbyClickAsync();
+        _joinLobbyButton.OnClickEvent += (_, _) => onJoinLobbyClick();
+        _leaderboardButton.OnClickEvent += (_, _) => onLeaderboardClickAsync();
+
+        BuildDrawable();
+    }
+
+    public void EnableButtons()
+    {
+        _createLobbyButton.Focusable = true;
+        _joinLobbyButton.Focusable = true;
+        _leaderboardButton.Focusable = true;
+    }
+
+    public void DisableButtons()
+    {
+        _createLobbyButton.Focusable = false;
+        _joinLobbyButton.Focusable = false;
+        _leaderboardButton.Focusable = false;
+    }
+    
+    private void BuildDrawable()
+    {
         Attach(
             new Grid
                 {
@@ -78,9 +105,9 @@ public class MainPageView : Drawable
                                 }
                             ]
                         }, row: 1, column: 1)
-                        .SetContent(createLobbyButton, row: 3, column: 1)
-                        .SetContent(joinLobbyButton, row: 5, column: 1)
-                        .SetContent(leaderboardButton, row: 7, column: 1), row: 0)
+                        .SetContent(_createLobbyButton, row: 3, column: 1)
+                        .SetContent(_joinLobbyButton, row: 5, column: 1)
+                        .SetContent(_leaderboardButton, row: 7, column: 1), row: 0)
                 .SetContent(new TextBlock
                 {
                     Text = "    [TAB]: Cycle Focus  |  [SPACE]: Interact  |  [CTRL+C]: Quit    ",
@@ -89,5 +116,4 @@ public class MainPageView : Drawable
                 }, row: 1)
         );
     }
-    
 }

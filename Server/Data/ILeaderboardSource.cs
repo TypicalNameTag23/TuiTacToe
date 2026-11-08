@@ -4,5 +4,5 @@ namespace Server.Data;
 
 public interface ILeaderboardSource
 {
-    public Task<List<Player>> GetLeaderboardAsync(int count = 10, int offset = 0);
+    public Task<List<User>> GetLeaderboardAsync(int count = 10, int offset = 0);
 }

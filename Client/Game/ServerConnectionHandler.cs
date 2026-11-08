@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Net.Sockets;
 using Common;
 using Common.Packets;
@@ -37,6 +38,7 @@ public class ServerConnectionHandler(string address, int port)
 
                var openConnectionPacket = new OpenConnectionPacket();
                await TrySendAsync(openConnectionPacket);
+               
                var response = await GetResponseAsync(openConnectionPacket.Id);
                if (response is not { PacketType: PacketType.Accepted })
                {
@@ -55,13 +57,6 @@ public class ServerConnectionHandler(string address, int port)
                await CloseConnectionAsync();
                return false;
           }
-          // catch (Exception e)
-          // {
-          //      Console.WriteLine("An exception occured while processing incoming data, disconnecting from server.");
-          //      Console.WriteLine(e);
-          //      
-          //      await DisconnectAsync();
-          // }
           
           return true;
      }
@@ -102,30 +97,42 @@ public class ServerConnectionHandler(string address, int port)
           return true;
      }
 
+     public async Task<AbstractPacket?> GetResponseAsync(AbstractPacket packet)
+     {
+          return await GetResponseAsync(packet.Id);
+     }
+     
      public async Task<AbstractPacket?> GetResponseAsync(ulong id, CancellationToken cancellationToken = default)
      {
           if (!Connected)
           {
                return null;
           }
-          
-          var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationTokenSource!.Token);
-          var token = linkedTokenSource.Token;
-          var start = DateTime.Now;
-          while (!token.IsCancellationRequested)
-          {
-               if (_pendingPackets.Remove(id, out var packet))
-               {
-                    return packet;
-               }
 
-               if (DateTime.Now - start > TimeOut)
-               {
-                    await DisconnectAsync();
-               }
-          }
+          using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationTokenSource!.Token);
+          var token = linkedTokenSource.Token;
+          var stopwatch = new Stopwatch();
+          stopwatch.Start();
           
-          return null;
+          return await Task.Run(async () =>
+          {
+               while (!token.IsCancellationRequested)
+               {
+                    if (_pendingPackets.Remove(id, out var packet))
+                    {
+                         stopwatch.Stop();
+                         return packet;
+                    }
+
+                    if (stopwatch.Elapsed > TimeOut)
+                    {
+                         stopwatch.Stop();
+                         await DisconnectAsync();
+                    }
+               }
+               
+               return null;
+          }, token);
      }
 
      private async Task CloseConnectionAsync()

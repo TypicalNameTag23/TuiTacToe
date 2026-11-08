@@ -6,32 +6,43 @@ using Common.Packets.Handshake;
 using Common.Packets.Lobby;
 using Common.Utilities;
 using Server.Data;
+using Server.Data.Models;
 
 namespace Server;
 
 public class Session : IDisposable
 {
      private readonly Func<Session, GameSession> _getGameSession;
+     private readonly Func<string, string, Task<User?>> _tryCreateUserAsync;
+     private readonly Func<string, string, Task<User?>> _validatePasswordAsync;
      private readonly ILeaderboardSource _leaderboardSource;
+     
      private CancellationTokenSource _cancellationTokenSource;
      private NetworkStreamProcessor _networkStreamProcessor;
-     private GameSession? _gameSession;
      private TcpClient? _client;
+     
+     private User? _user;
 
+     public GameSession? GameSession { get; private set; }
+     public bool Authenticated => _user != null;
      public EventHandler<EventArgs>? OnDisconnect;
 
      public Session(
           TcpClient client, 
           ILeaderboardSource leaderboardSource,
-          Func<Session, GameSession> getGameSession)
+          Func<Session, GameSession> getGameSession,
+          Func<string, string, Task<User?>> tryCreateUserAsync,
+          Func<string, string, Task<User?>> _validatePasswordAsync)
      {
           _client = client;
           _leaderboardSource = leaderboardSource;
           _getGameSession = getGameSession;
+          _tryCreateUserAsync = tryCreateUserAsync;
+          this._validatePasswordAsync = _validatePasswordAsync;
           _client.GetStream().ReadTimeout = 50;
           _ = StartAsync();
      }
-     
+
      public async Task StartAsync()
      {
           _networkStreamProcessor = new NetworkStreamProcessor(_client!.GetStream(), ProcessIncomingData);
@@ -86,19 +97,23 @@ public class Session : IDisposable
                     break;
                }
                case PacketType.Register: // todo: check username availability and store password before sending session id
+               {
+                    await RegisterAsync((RegisterPacket) packet);
+                    break;
+               }
                case PacketType.Login: // todo: check password correct before sending session id, check session id not in use elsewhere
                {
-                    await _client.SendAsync(new LoginInformation(packet.Id, Random.Shared.GetString("1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOOPASDFGHJKLZXCVBNM", 64)));
+                    await LoginAsync((LoginPacket) packet);
                     break;
                }
                case PacketType.CreateLobby:
                {
-                    await CreateLobby(packet.Id);
+                    await CreateLobbyAsync(packet.Id);
                     break;
                }
                case PacketType.LeaveLobby:
                {
-                    DisconnectFromLobby(packet.Id);
+                    await DisconnectFromLobbyAsync(packet.Id);
                     break;
                }
                case PacketType.JoinLobby:
@@ -127,26 +142,53 @@ public class Session : IDisposable
           }
      }
 
-     private void DisconnectFromLobby(ulong id)
+     private async Task RegisterAsync(RegisterPacket packet)
      {
-          if (_gameSession == null)
+          _user = await _tryCreateUserAsync(packet.Username, packet.PasswordHashString);
+          if (!Authenticated)
           {
-               _client!.SendAsync(new DeniedPacket(id)).Wait();
+               await _client.SendAsync(new DeniedPacket(packet.Id));
                return;
           }
-
-          _gameSession.Disconnect(this);
+          
+          await _client.SendAsync(new AcceptedPacket(packet.Id));
      }
 
-     private async Task CreateLobby(ulong id)
+     private async Task LoginAsync(LoginPacket packet)
      {
-          if (_gameSession != null)
+          _user = await _validatePasswordAsync(packet.Username, packet.PasswordHashString);
+          if (!Authenticated)
           {
-               await _client!.SendAsync(new DeniedPacket(id));
+               await _client.SendAsync(new DeniedPacket(packet.Id));
+               return;
+          }
+          
+          await _client.SendAsync(new AcceptedPacket(packet.Id));
+     }
+
+     private async Task DisconnectFromLobbyAsync(ulong id)
+     {
+          if (!Authenticated || GameSession == null)
+          {
+               await _client.SendAsync(new DeniedPacket(id));
+               return;
+          }
+          
+          GameSession.Disconnect(this);
+          GameSession = null;
+          
+          await _client.SendAsync(new AcceptedPacket(id));
+     }
+
+     private async Task CreateLobbyAsync(ulong id)
+     {
+          if (!Authenticated || GameSession != null)
+          {
+               await _client.SendAsync(new DeniedPacket(id));
                return;
           }
                     
-          _gameSession = _getGameSession(this);
-          await _client!.SendAsync(new LobbyCreationInformationPacket(id, _gameSession.LobbyId));
+          GameSession = _getGameSession(this);
+          await _client!.SendAsync(new LobbyCreationInformationPacket(id, GameSession.LobbyId));
      }
 }

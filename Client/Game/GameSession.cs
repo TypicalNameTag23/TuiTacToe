@@ -1,6 +1,6 @@
 namespace Client.Game;
 
-public class TicTacToeGame
+public class GameSession
 {
     
 }
