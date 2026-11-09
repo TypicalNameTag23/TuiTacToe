@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
+using Common;
 using Server.Data;
+using Server.Data.Models;
 
 namespace Server;
 
@@ -12,9 +14,9 @@ public class Server : IDisposable
     private TcpListener _listener;
     private readonly List<Session> _sessions = [];
     private readonly Dictionary<int, GameSession> _gameSessionMap = [];
-    private readonly Dictionary<Session, GameSession> _clientGameSessionMap = [];
     
     private ILeaderboardSource _leaderboardSource = new LeaderboardSource();
+    private IUserDatabase _userDatabase = new UserDatabase();
     private Random _random = new();
 
     public bool Running { get; private set; }
@@ -51,7 +53,13 @@ public class Server : IDisposable
         while (_listener.Pending())
         {
             var client = _listener.AcceptTcpClient();
-            var session = new Session(client, _leaderboardSource, CreateGameSession);
+            var session = new Session(
+                client, 
+                _leaderboardSource, 
+                CreateGameSession,
+                GetGameSession,
+                TryCreateUserAsync,
+                ValidatePasswordAsync);
             session.OnDisconnect += OnSessionDisconnected;
             
             _sessions.Add(session);
@@ -59,6 +67,58 @@ public class Server : IDisposable
 
             Console.WriteLine($"Client {client.Client.RemoteEndPoint} connected");
         }
+    }
+
+    private GameSession? GetGameSession(int lobbyId)
+    {
+        if (!_gameSessionMap.TryGetValue(lobbyId, out var gameSession) || gameSession.Guest != null)
+        {
+            return null;
+        }
+        
+        return gameSession;
+    }
+
+    private async Task<User?> ValidatePasswordAsync(string username, string password)
+    {
+        try
+        {
+            var user = await _userDatabase.GetUserAsync(username);
+            if (user == null)
+            {
+                return null;
+            }
+            
+            return !HashHelper.ValidatePassword(password, user.PasswordHash) ? null : user;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Failed to create user: " + username);
+            Console.WriteLine(e);
+
+            return null;
+        }
+    }
+
+    private async Task<User?> TryCreateUserAsync(string username, string password)
+    {
+        var user = new User(username, password);
+        try
+        {
+            if (!await _userDatabase.CreateUserAsync(user))
+            {
+                return null;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Failed to create user: " + username);
+            Console.WriteLine(e);
+
+            return null;
+        }
+        
+        return user;
     }
 
     private GameSession CreateGameSession(Session session)
@@ -74,8 +134,18 @@ public class Server : IDisposable
         {
             lobbyId = _random.Next(10000, 99999);
         }
+
+        var gameSession = new GameSession(lobbyId, session);
+        gameSession.OnGameCompleted += OnGameCompleted;
+        _gameSessionMap.Add(lobbyId, gameSession);
         
-        return new GameSession(lobbyId, session);
+        return gameSession;
+    }
+
+    private void OnGameCompleted(object? sender, Session e)
+    {
+        var gameSession = sender as GameSession;
+        _gameSessionMap.Remove(gameSession!.LobbyId);
     }
 
     private void OnSessionDisconnected(object? sender, EventArgs args)

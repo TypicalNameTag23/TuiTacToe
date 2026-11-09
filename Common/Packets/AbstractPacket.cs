@@ -18,7 +18,7 @@ public abstract class AbstractPacket
     /// The size of the packet in bytes
     /// </summary>
     /// todo change to bits, not everything is byte aligned
-    public virtual int PacketSizeBytes => PacketBaseSizeBytes;
+    public abstract int PacketSizeBytes { get; }
     
     /// <summary>
     /// The <see cref="PacketType"/>
@@ -28,7 +28,7 @@ public abstract class AbstractPacket
     /// <summary>
     /// The id of the packet
     /// </summary>
-    public ulong Id { get; set; }
+    public ulong Id { get; private set; }
 
     public AbstractPacket()
     {
@@ -52,26 +52,11 @@ public abstract class AbstractPacket
     /// <returns>The byte array</returns>
     public virtual byte[] Encode()
     {
-        var packetTypeBytes = BitConverter.GetBytes((short) PacketType);
-        if (BitConverter.IsLittleEndian)
-        {
-            Array.Reverse(packetTypeBytes);
-        }
-        
-        var packetIdBytes = BitConverter.GetBytes(Id);
-        if (BitConverter.IsLittleEndian)
-        {
-            Array.Reverse(packetIdBytes);
-        }
+        var packetTypeBytes = BitConverters.GetBytesEndianIndependent((short) PacketType);
+        var packetIdBytes = BitConverters.GetBytesEndianIndependent(Id);
         
         var encoded = new byte[PacketBaseSizeBytes];
-        Buffer.BlockCopy(
-            packetTypeBytes, 0, 
-            encoded, 0, PacketTypeSizeBytes);
-        Buffer.BlockCopy(
-            packetIdBytes, 0, 
-            encoded, PacketTypeSizeBytes, IdSizeBytes);
-        
+        encoded.CopyInto(packetTypeBytes, packetIdBytes);
         return encoded;
     }
 
@@ -79,20 +64,17 @@ public abstract class AbstractPacket
     /// Reads in data from the buffer and populates the packet
     /// </summary>
     /// <param name="buffer">The buffer to read from</param>
-    internal virtual void Load(ReadOnlySequence<byte> buffer)
+    internal virtual bool Load(ReadOnlySequence<byte> buffer)
     {
-        var slice = buffer
-            .Slice(PacketTypeSizeBytes, IdSizeBytes)
-            .FirstSpan;
-        
-        if (BitConverter.IsLittleEndian)
+        if (buffer.Length < PacketBaseSizeBytes)
         {
-            slice = slice.Reversed();
+            return false;
         }
         
-        var data = BitConverter.ToUInt64(slice);
-        Id = data;
+        Id = buffer.GetULong(PacketTypeSizeBytes, IdSizeBytes);
+        
+        return true;
     }
-    
-    public override string ToString() => $"{{ PacketType: {PacketType}, Id: {Id} }}";
+
+    public override string ToString() => this.GetObjectString();
 }

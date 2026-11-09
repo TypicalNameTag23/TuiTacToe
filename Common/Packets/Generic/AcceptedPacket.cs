@@ -4,6 +4,8 @@ namespace Common.Packets.Generic;
 
 public class AcceptedPacket : AbstractPacket
 {
+    public override int PacketSizeBytes => PacketBaseSizeBytes;
+    
     public override PacketType PacketType => PacketType.Accepted;
 
     public AcceptedPacket() { }

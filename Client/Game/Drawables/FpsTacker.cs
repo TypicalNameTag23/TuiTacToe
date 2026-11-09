@@ -12,8 +12,8 @@ public sealed class FpsTacker : DrawableControl
     private ulong _totalFramesDrawn;
     
     // uint.MaxValue as seconds is ~136 years, ~~likely~~ don't have to worry about this overflowing
-    private uint _fpsAveragesCalculated = 0;
-    private int _averageFps = 0;
+    private uint _fpsAveragesCalculated;
+    private int _averageFps;
     private int _minFps = int.MaxValue;
     
     private double _renderTime;
@@ -58,17 +58,21 @@ public sealed class FpsTacker : DrawableControl
                 $"FPS: {fps} | FPS (Low): {_minFps} | FPS (Average): {_averageFps} | Draw: {_renderTime:N2}ms | Max Draw: {_maxRenderTime:N2}ms | Average Draw: {_averageRenderTime:N2}ms | Frames Drawn: {_totalFramesDrawn}";
             if (_fpsTimerStopwatch.ElapsedMilliseconds >= 1000)
             {
-                fps = framesDrawn / (int) (_fpsTimerStopwatch.ElapsedMilliseconds / 1000);
-                if (fps < _minFps)
+                try
                 {
-                    _minFps = fps;
+                    fps = framesDrawn / (int) (_fpsTimerStopwatch.ElapsedMilliseconds / 1000);
+                    if (fps < _minFps)
+                    {
+                        _minFps = fps;
+                    }
+
+                    _averageFps = (int)((_averageFps * _fpsAveragesCalculated + fps) / ++_fpsAveragesCalculated);
+                    _fpsAveragesCalculated++;
+
+                    framesDrawn = 0;
+                    _fpsTimerStopwatch.Restart();
                 }
-                
-                _averageFps = (int) ((_averageFps * _fpsAveragesCalculated + fps) / ++_fpsAveragesCalculated);
-                _fpsAveragesCalculated++;
-                
-                framesDrawn = 0;
-                _fpsTimerStopwatch.Restart();
+                catch (DivideByZeroException) { }
             }
         };
     }

@@ -1,7 +1,9 @@
+using System.Net.Http.Headers;
 using Client.Game.Drawables;
 using Client.Game.Views;
 using Client.Ssh;
 using Client.Ssh.Parsing;
+using Common;
 using Common.Packets;
 using Common.Packets.Handshake;
 using Common.Packets.Leaderboard;
@@ -10,47 +12,28 @@ using FxSsh;
 using FxSsh.Services;
 using Painter;
 using Painter.Drawables;
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
 namespace Client.Game;
 
-public class Client : IDisposable
+public class Client(PtyArgs args, Session session) : IDisposable
 {
     private static readonly Key CtrlCKey = new(ConsoleKey.C, ConsoleModifiers.Control);
     private const string BackendServerAddress = "127.0.0.1";
     private const int BackendServerPort = 4343;
 
-    private DisconnectedView _disconnectedView;
-    private LoginView _loginView;
     private ContentControl _contentDisplay;
-    private MainPageView _mainPageView;
+    private GameSession? _gameSession;
     private Application _app;
 
-    private readonly Session _session;
-    private readonly PtyArgs _args;
-    
     private CancellationTokenSource _cancellationTokenSource;
     private ServerConnectionHandler _serverConnectionHandler;
 
-    public Client(PtyArgs args, Session session)
-    {
-        _args = args;
-        _session = session;
-    }
-
     public async Task StartAsync()
     {
-        #region Setup application views
-        _loginView = new LoginView(OnLoginButtonClick, OnSignUpButtonClick);
-        _mainPageView = new MainPageView(OnCreateLobbyClick, OnJoinLobbyClick, OnLeaderboardClick);
-        _disconnectedView = new DisconnectedView(OnReconnectClick);
-        _contentDisplay = new ContentControl
-        {
-            Content = _loginView
-        };
-        #endregion
-
-        #region Setup application
-        var terminal = new SshTerminal(_args, new XTermInputParser());
+        _contentDisplay = new ContentControl();
+        
+        var terminal = new SshTerminal(args, new XTermInputParser());
         _app = new Application(terminal)
         {
             Content = new Grid { RowDefinitions = RowDefinition.Of("1, *") }
@@ -58,157 +41,234 @@ public class Client : IDisposable
                 .SetContent(_contentDisplay, row: 1)
         };
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
-        #endregion
 
-        #region Setup server connection
         _serverConnectionHandler = new ServerConnectionHandler(BackendServerAddress, BackendServerPort);
-        _serverConnectionHandler.OnConnectionClosed += (_, _) => OnDisconnectedFromServer();
-
-        _cancellationTokenSource = new CancellationTokenSource();
-        var connected = await _serverConnectionHandler.TryConnectAsync(_cancellationTokenSource);
-        if (!connected)
-        {
-            _contentDisplay.Content = _disconnectedView;
-        }
-        #endregion
+        _serverConnectionHandler.OnConnectionClosed += OnDisconnectedFromServer;
+        _serverConnectionHandler.OnPacketReceived += OnPacketReceived;
+        await ConnectAsync();
         
-        var applicationThread = new Thread(_app.Start);
+        var applicationThread = new Thread(() =>
+        {
+            try
+            {
+                _app.Start();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Something occured and the application crashed, disconnecting!");
+                Console.WriteLine(e);
+                _ = DisconnectAsync();
+            }
+        });
+        
         applicationThread.Start();
     }
 
-    private void OnLoginButtonClick(string arg1, string arg2)
+    // like yeah idk this code is shit but whatever
+    private void OnPacketReceived(object? _, AbstractPacket packet)
     {
-        var loginPacket = new LoginPacket();
-        if (!_serverConnectionHandler.TrySendAsync(loginPacket).Result)
+        if (packet is OpponentConnectedPacket opponentConnectedPacket)
         {
-            return;
+            
         }
-
-        var response = _serverConnectionHandler.GetResponseAsync(loginPacket.Id).Result;
-        if (response is not { PacketType: PacketType.Accepted })
+        if (packet is OpponentDisconnectedPacket opponentDisconnectedPacket)
         {
-            return;
+            
         }
-
-        // extract inner packet
-
-        _contentDisplay.Content = _mainPageView;
-    }
-
-    private void OnSignUpButtonClick(string arg1, string arg2)
-    {
-        var loginPacket = new RegisterPacket();
-        if (!_serverConnectionHandler.TrySendAsync(loginPacket).Result)
-        {
-            return;
-        }
-
-        var response = _serverConnectionHandler.GetResponseAsync(loginPacket.Id).Result;
-        if (response is not { PacketType: PacketType.Accepted })
-        {
-            return;
-        }
-
-        // extract inner packet
-
-        _contentDisplay.Content = _mainPageView;
     }
 
     public async Task DisconnectAsync()
     {
         await _serverConnectionHandler.DisconnectAsync();
+        
         _app.Kill();
-        _session.Disconnect();
+        session.Disconnect();
     }
 
-    private void OnReconnectClick()
+    private async Task OnLoginButtonClickAsync(string username, string password)
     {
-        if (_serverConnectionHandler.Connected)
+        if (_contentDisplay.Content is not LoginView view)
         {
             return;
         }
         
-        _cancellationTokenSource = new CancellationTokenSource();
-        if (_serverConnectionHandler.TryConnectAsync(_cancellationTokenSource).Result)
+        view.DisableButtons();
+        var loginPacket = new LoginPacket(username, HashHelper.HashPassword(password));
+        if (!await _serverConnectionHandler.TrySendAsync(loginPacket))
         {
-            _contentDisplay.Content = _mainPageView;
+            return;
+        }
+
+        var response = await _serverConnectionHandler.GetResponseAsync(loginPacket.Id);
+        if (response is not { PacketType: PacketType.Accepted })
+        {
+            view.EnableButtons();
+            return;
+        }
+        
+        _app.QueueAction(() => _contentDisplay.Content = new MainPageView(OnCreateLobbyClickAsync, OnJoinLobbyClick, OnLeaderboardClickAsync));
+    }
+
+    private async Task OnSignUpButtonClickAsync(string username, string password)
+    {
+        if (_contentDisplay.Content is not LoginView view)
+        {
+            return;
+        }
+        
+        var loginPacket = new RegisterPacket(username, HashHelper.HashPassword(password));
+        if (!await _serverConnectionHandler.TrySendAsync(loginPacket))
+        {
+            return;
+        }
+
+        var response = await _serverConnectionHandler.GetResponseAsync(loginPacket.Id);
+        if (response is not { PacketType: PacketType.Accepted })
+        {
+            view.EnableButtons();
+            return;
+        }
+        
+        _app.QueueAction(() => _contentDisplay.Content = new MainPageView(OnCreateLobbyClickAsync, OnJoinLobbyClick, OnLeaderboardClickAsync));
+    }
+
+    private async Task OnReconnectClickAsync()
+    {
+        if (_contentDisplay.Content is not DisconnectedView view || _serverConnectionHandler.Connected)
+        {
+            return;
+        }
+
+        view.DisableButtons();
+        await ConnectAsync();
+        view.EnableButtons();
+    }
+
+    private async Task ConnectAsync()
+    {
+        _cancellationTokenSource = new CancellationTokenSource();
+        if (await _serverConnectionHandler.TryConnectAsync(_cancellationTokenSource))
+        {
+            _app.QueueAction(() => _contentDisplay.Content = new LoginView(OnLoginButtonClickAsync, OnSignUpButtonClickAsync));
         }
     }
 
-    private void OnCreateLobbyClick()
+    private async Task OnCreateLobbyClickAsync()
     {
-        var packet = new CreateLobbyPacket(AbstractPacket.NextPacketId());
+        if (_contentDisplay.Content is not MainPageView view)
+        {
+            return;
+        }
+
+        view.DisableButtons();
+        var packet = new CreateLobbyPacket();
         if (!_serverConnectionHandler.TrySendAsync(packet).Result)
         {
             return;
         }
-
-        var response = _serverConnectionHandler.GetResponseAsync(packet.Id).Result;
+        
+        var response = await _serverConnectionHandler.GetResponseAsync(packet);
         if (response is not { PacketType: PacketType.LobbyCreationInformation })
         {
+            view.EnableButtons();
             return;
         }
         
-        Console.WriteLine(response);
-        
-        _contentDisplay.Content = new GameView();
-        UpdateCtrlCKeyBind();
-        Console.WriteLine("Create lobby button clicked!");
+        _app.QueueAction(() => _contentDisplay.Content = new GameView());
+        _app.RemoveGlobalBoundKey(CtrlCKey);
+        _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
+    }
+
+    private async Task LeaveLobbyAsync()
+    {
+        _app.RemoveGlobalBoundKey(CtrlCKey);
+        var packet = new LeaveLobbyPacket();
+        if (!await _serverConnectionHandler.TrySendAsync(packet))
+        {
+            _gameSession = null;
+            return;
+        }
+
+        var response = await _serverConnectionHandler.GetResponseAsync(packet.Id);
+        if (response is not { PacketType: PacketType.Accepted })
+        {
+            _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
+            return;
+        }
+
+        _gameSession = null;
+        _app.RemoveGlobalBoundKey(CtrlCKey);
+        _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
+        _app.QueueAction(() => _contentDisplay.Content = new MainPageView(OnCreateLobbyClickAsync, OnJoinLobbyClick, OnLeaderboardClickAsync));
     }
 
     private void OnJoinLobbyClick()
     {
-        _contentDisplay.Content = new JoinLobbyView(OnJoinButtonClick);
-        UpdateCtrlCKeyBind();
-        Console.WriteLine("Join lobby button clicked!");
+        if (_contentDisplay.Content is not MainPageView)
+        {
+            return;
+        }
+        
+        _contentDisplay.Content = new JoinLobbyView(OnJoinButtonClickAsync);
+        UpdateCtrlCCloseKeyBindToBackKeyBind();
     }
     
-    private void OnJoinButtonClick(string code)
+    private async Task OnJoinButtonClickAsync(int code)
     {
-        if (!_serverConnectionHandler.TrySendAsync(
-                new JoinLobbyPacket(
-                    int.Parse(code),
-                    AbstractPacket.NextPacketId())).Result) // todo force int only
+        if (_contentDisplay.Content is not JoinLobbyView view)
         {
-            OnDisconnectedFromServer();
             return;
         }
 
-        _contentDisplay.Content = new GameView();
-        Console.WriteLine("Join button clicked!");
+        view.DisableButtons();
+        var packet = new JoinLobbyPacket(code);
+        if (!await _serverConnectionHandler.TrySendAsync(packet)) 
+        {
+            return;
+        }
+
+        var response = await _serverConnectionHandler.GetResponseAsync(packet);
+        if (response is not { PacketType: PacketType.LobbyJoinInformation })
+        {
+            view.EnableButtons();
+            return;
+        }
+
+        _app.QueueAction(() => _contentDisplay.Content = new GameView());
+        _app.RemoveGlobalBoundKey(CtrlCKey);
+        _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
     }
 
-    private void OnLeaderboardClick()
+    private async Task OnLeaderboardClickAsync()
     {
-        if (!_serverConnectionHandler.TrySendAsync(new ViewLeaderboardPacket(AbstractPacket.NextPacketId())).Result)
+        if (!await _serverConnectionHandler.TrySendAsync(new ViewLeaderboardPacket()))
         {
-            OnDisconnectedFromServer();
             return;
         }
         
-        _contentDisplay.Content = new LeaderboardView();
-        UpdateCtrlCKeyBind();
-        Console.WriteLine("Leaderboard button clicked!");
+        _app.QueueAction(() => _contentDisplay.Content = new LeaderboardView());
+        UpdateCtrlCCloseKeyBindToBackKeyBind();
     }
 
-    private void OnDisconnectedFromServer()
+    private void OnDisconnectedFromServer(object? s, EventArgs e)
     {
-        _contentDisplay.Content = _disconnectedView;
-        
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
+        
+        if (_contentDisplay.Content is DisconnectedView)
+        {
+            return;
+        }
+        
+        _app.QueueAction(() => { _contentDisplay.Content = new DisconnectedView(OnReconnectClickAsync); });
     }
 
-    // a bunch of stupid hacks since there is no way of interacting with the main application
-    // to change the displayed content nor is there a way to add a page specific key bind
-    // and there is also no concept of a back stack, so its either create a new welcome window
-    // or this hack
-    private void UpdateCtrlCKeyBind()
+    private void UpdateCtrlCCloseKeyBindToBackKeyBind()
     {
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) =>
         {
-            _contentDisplay.Content = _mainPageView;
+            _app.QueueAction(() => _contentDisplay.Content = new MainPageView(OnCreateLobbyClickAsync, OnJoinLobbyClick, OnLeaderboardClickAsync));
             _app.RemoveGlobalBoundKey(CtrlCKey);
             _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
         });

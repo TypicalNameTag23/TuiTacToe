@@ -17,7 +17,7 @@ public class GameView : Drawable
                     {
                         RowDefinitions = RowDefinition.Of("*, 11, *"),
                         ColumnDefinitions = ColumnDefinition.Of("*, 25, *")
-                    }.SetContent(new TicTacToeBoardDrawable(), row: 1, column: 1)
+                    }.SetContent(new TicTacToeBoardDrawable(), row: 1, column: 1))
                 .SetContent(
                     new TextBlock
                     {
@@ -25,6 +25,6 @@ public class GameView : Drawable
                         OverflowStyle = OverflowStyle.Cutoff,
                         BackgroundColor = Color.Black
                     }, row: 1)
-        ));   
+        );   
     }
 }

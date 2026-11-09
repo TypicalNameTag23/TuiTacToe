@@ -2,7 +2,10 @@ namespace Server;
 
 public class GameSession(int lobbyId, Session host)
 {
-    public EventHandler<GameSessionEndArgs>? OnGameSessionEnd;
+    public EventHandler<Session>? OnGameCompleted;
+    public EventHandler<EventArgs>? OnOpponentDisconnected;
+    public EventHandler<Session>? OnGuestConnected;
+    
     public Session? Host { get; private set; } = host;
     public Session? Guest { get; private set; }
     public int LobbyId { get; } = lobbyId;
@@ -15,12 +18,29 @@ public class GameSession(int lobbyId, Session host)
         }
         
         Guest = session;
+        OnGuestConnected?.Invoke(this, session);
     }
     
     public void Disconnect(Session session)
     {
-        var connectedSession = session == Host ? Guest : Host;
+        if (Guest == null)
+        {
+            return;
+        }
         
-        OnGameSessionEnd?.Invoke(this, new GameSessionEndArgs(connectedSession!));
+        var connectedSession = session == Host ? Guest : Host;
+
+        OnOpponentDisconnected?.Invoke(this, EventArgs.Empty);
+        DeclareWinner(connectedSession!);
+    }
+
+    public bool PlayPosition(short x, short y)
+    {
+        return true;
+    }
+
+    private void DeclareWinner(Session winner)
+    {
+        OnGameCompleted?.Invoke(this, winner);
     }
 }

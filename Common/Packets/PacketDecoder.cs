@@ -19,7 +19,6 @@ public static class PacketDecoder
         [PacketType.OpenConnection] = () => new OpenConnectionPacket(),
         [PacketType.Login] = () => new LoginPacket(),
         [PacketType.Register] = () => new RegisterPacket(),
-        [PacketType.LoginInformation] = () => new LoginInformation(),
         #endregion
 
         #region Lobby Management
@@ -76,21 +75,20 @@ public static class PacketDecoder
                 slice = slice.Reversed();
             }
             
-            var packetId = BitConverter.ToInt16(slice);
-            var packetType = (PacketType) packetId;
+            var packetTypeBytes = BitConverter.ToInt16(slice);
+            var packetType = (PacketType) packetTypeBytes;
             if (!PacketRegistry.TryGetValue(packetType, out var packetFactory))
             {
-                Console.WriteLine($"Failed to decode packet: unknown packet Id {packetId}");
+                Console.WriteLine($"Failed to decode packet: unknown packet Id {packetTypeBytes}");
                 return false;
             }
 
             packet = packetFactory();
-            if (buffer.Length < packet.PacketSizeBytes)
+            if (!packet.Load(buffer))
             {
                 return false;
             }
             
-            packet.Load(buffer);
             buffer = buffer.Slice(packet.PacketSizeBytes);
             
             return true;

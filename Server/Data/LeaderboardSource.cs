@@ -4,7 +4,7 @@ namespace Server.Data;
 
 public class LeaderboardSource : ILeaderboardSource
 {
-    public async Task<List<Player>> GetLeaderboardAsync(int count = 10, int offset = 0)
+    public async Task<List<User>> GetLeaderboardAsync(int count = 10, int offset = 0)
     {
         return [];
     }
