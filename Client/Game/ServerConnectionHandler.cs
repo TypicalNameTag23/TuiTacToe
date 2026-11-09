@@ -12,6 +12,7 @@ namespace Client.Game;
 public class ServerConnectionHandler(string address, int port)
 {
      private static readonly TimeSpan TimeOut = TimeSpan.FromSeconds(5);
+     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(5);
 
      private Dictionary<ulong, AbstractPacket> _pendingPackets = [];
      private CancellationTokenSource? _cancellationTokenSource;
@@ -41,6 +42,7 @@ public class ServerConnectionHandler(string address, int port)
                await TrySendAsync(openConnectionPacket);
                
                var response = await GetResponseAsync(openConnectionPacket.Id);
+               Console.WriteLine(response);
                if (response is not { PacketType: PacketType.Accepted })
                {
                     Console.WriteLine("Failed to connect to the backend server, server responded with non Accepted packet!");
@@ -49,6 +51,7 @@ public class ServerConnectionHandler(string address, int port)
                     return false;
                }
 
+               _ = StartHeartbeatTask();
           }
           catch (SocketException e)
           {
@@ -60,6 +63,30 @@ public class ServerConnectionHandler(string address, int port)
           }
           
           return true;
+     }
+
+     private Task StartHeartbeatTask()
+     {
+          return Task.Run(async () =>
+          {
+               while (_cancellationTokenSource is { IsCancellationRequested: false })
+               {
+                    var packet = new HeartbeatPacket();
+                    if (!await TrySendAsync(packet))
+                    {
+                         return;
+                    }
+                    
+                    var response = await GetResponseAsync(packet);
+                    if (response is not { PacketType: PacketType.Accepted })
+                    {
+                         Console.WriteLine("Didn't receive heartbeat response from server, disconnecting.");
+                         await CloseConnectionAsync();
+                    }
+                    
+                    await Task.Delay(HeartbeatInterval);
+               }
+          });
      }
 
      public async Task DisconnectAsync()
@@ -98,16 +125,16 @@ public class ServerConnectionHandler(string address, int port)
           return true;
      }
 
-     public async Task<AbstractPacket?> GetResponseAsync(AbstractPacket packet)
+     public Task<AbstractPacket?> GetResponseAsync(AbstractPacket packet, CancellationToken cancellationToken = default)
      {
-          return await GetResponseAsync(packet.Id);
+          return GetResponseAsync(packet.Id, cancellationToken);
      }
      
-     public async Task<AbstractPacket?> GetResponseAsync(ulong id, CancellationToken cancellationToken = default)
+     public Task<AbstractPacket?> GetResponseAsync(ulong id, CancellationToken cancellationToken = default)
      {
           if (!Connected)
           {
-               return null;
+               return Task.FromResult<AbstractPacket?>(null);
           }
 
           using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationTokenSource!.Token);
@@ -115,7 +142,7 @@ public class ServerConnectionHandler(string address, int port)
           var stopwatch = new Stopwatch();
           stopwatch.Start();
           
-          return await Task.Run(async () =>
+          return Task.Run(async () =>
           {
                while (!token.IsCancellationRequested)
                {
@@ -129,6 +156,7 @@ public class ServerConnectionHandler(string address, int port)
                     {
                          stopwatch.Stop();
                          await DisconnectAsync();
+                         break;
                     }
                }
                
@@ -146,6 +174,7 @@ public class ServerConnectionHandler(string address, int port)
           await _cancellationTokenSource!.CancelAsync();
           _server!.Close();
           _server.Dispose();
+          Console.WriteLine("Connection closed");
           _server = null;
           
           OnConnectionClosed?.Invoke(this, EventArgs.Empty);

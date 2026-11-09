@@ -42,7 +42,7 @@ public class SshServer
     {
         _clients.ForEach(it =>
         {
-            it.DisconnectAsync().Wait();
+            // it.DisconnectAsync().Wait();
         });
     }
     

@@ -13,6 +13,9 @@ namespace Server;
 
 public class Session : IDisposable
 {
+     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(10);
+     private static readonly TimeSpan HeartbeatCheckInterval = TimeSpan.FromSeconds(5);
+     
      private readonly Func<int, GameSession?> _getGameSession;
      private readonly Func<Session, GameSession> _createGameSession;
      private readonly Func<string, string, Task<User?>> _tryCreateUserAsync;
@@ -21,13 +24,14 @@ public class Session : IDisposable
      
      private CancellationTokenSource _cancellationTokenSource;
      private NetworkStreamProcessor _networkStreamProcessor;
+     private DateTime _lastHeartbeat;
      private TcpClient? _client;
      
      public User? User { get; private set; }
      public GameSession? GameSession { get; private set; }
      public bool Authenticated => User != null;
-     
-     public EventHandler<EventArgs>? OnDisconnect;
+
+     public EventHandler<EventArgs>? OnDisconnect { get; set; }
 
      public Session(
           TcpClient client, 
@@ -44,17 +48,20 @@ public class Session : IDisposable
           _tryCreateUserAsync = tryCreateUserAsync;
           _validatePasswordAsync = validatePasswordAsync;
           _client.GetStream().ReadTimeout = 50;
-          _ = StartAsync();
      }
 
      public async Task StartAsync()
      {
-          _networkStreamProcessor = new NetworkStreamProcessor(_client!.GetStream(), ProcessIncomingData);
           _cancellationTokenSource = new CancellationTokenSource();
-          
+          _networkStreamProcessor = new NetworkStreamProcessor(_client!.GetStream(), ProcessIncomingData);
+
           try
           {
-               await _networkStreamProcessor.StartAsync(_cancellationTokenSource.Token);
+               var processorTask = _networkStreamProcessor.StartAsync(_cancellationTokenSource.Token);
+               var heartbeatTask = StartHeartbeatTask();
+               _lastHeartbeat = DateTime.UtcNow;
+
+               await Task.WhenAll(heartbeatTask, processorTask);
           }
           catch (Exception e)
           {
@@ -64,18 +71,35 @@ public class Session : IDisposable
           }
      }
 
+     private Task StartHeartbeatTask()
+     {
+          return Task.Run(async () =>
+          {
+               while (!_cancellationTokenSource.IsCancellationRequested)
+               {
+                    await Task.Delay(HeartbeatCheckInterval, _cancellationTokenSource.Token);
+                    if (DateTime.UtcNow - _lastHeartbeat >= HeartbeatInterval)
+                    {
+                         Console.WriteLine($"{(DateTime.UtcNow - _lastHeartbeat).Seconds} seconds since last heartbeat, disconnecting.");
+                         Disconnect();
+                    }
+               }
+          });
+     }
+
      public void Disconnect()
      {
-          GameSession?.OnGameCompleted -= OnGameCompletedAsync; 
-          GameSession?.OnGuestConnected -= OnOpponentConnectedAsync; 
-          GameSession?.OnOpponentDisconnected -= OnOpponentDisconnectedAsync; 
+          GameSession?.OnGameCompleted -= OnGameCompletedAsync;
+          GameSession?.OnGuestConnected -= OnOpponentConnectedAsync;
+          GameSession?.OnOpponentDisconnected -= OnOpponentDisconnectedAsync;
           GameSession?.Disconnect(this);
           GameSession = null;
           
-          _cancellationTokenSource.Cancel();
+          _client?.SendAsync(new CloseConnectionPacket()).Wait();
           _client?.Close();
           _client = null;
-          
+
+          _cancellationTokenSource.Cancel();
           OnDisconnect?.Invoke(this, EventArgs.Empty);
      }
 
@@ -106,12 +130,12 @@ public class Session : IDisposable
                     await _client.SendAsync(new AcceptedPacket(packet.Id));
                     break;
                }
-               case PacketType.Register: // todo: check username availability and store password before sending session id
+               case PacketType.Register:
                {
                     await RegisterAsync((RegisterPacket) packet);
                     break;
                }
-               case PacketType.Login: // todo: check password correct before sending session id, check session id not in use elsewhere
+               case PacketType.Login:
                {
                     await LoginAsync((LoginPacket) packet);
                     break;
@@ -123,12 +147,18 @@ public class Session : IDisposable
                }
                case PacketType.LeaveLobby:
                {
-                    await DisconnectFromLobbyAsync(packet.Id);
+                    await HandleLeaveLobbyPacketAsync(packet.Id);
                     break;
                }
                case PacketType.JoinLobby:
                {
                     await JoinLobbyAsync((JoinLobbyPacket) packet);
+                    break;
+               }
+               case PacketType.Heartbeat:
+               {
+                    _lastHeartbeat = DateTime.UtcNow;
+                    await _client.SendAsync(new AcceptedPacket(packet.Id));
                     break;
                }
                case PacketType.CloseConnection:
@@ -201,7 +231,7 @@ public class Session : IDisposable
           await _client.SendAsync(new AcceptedPacket(packet.Id));
      }
 
-     private async Task DisconnectFromLobbyAsync(ulong id)
+     private async Task HandleLeaveLobbyPacketAsync(ulong id)
      {
           if (!Authenticated || GameSession == null)
           {
