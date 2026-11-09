@@ -22,11 +22,6 @@ public enum PacketType : ushort
     /// </summary>
     Register = 2,
     
-    /// <summary>
-    /// Sent by the server to the client, wrapped in an Accepted packet, in response to a successful login or register attempt.
-    /// </summary>
-    LoginInformation = 3,
-    
     #endregion
 
     #region Lobby Management 100-199

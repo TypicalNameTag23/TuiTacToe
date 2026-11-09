@@ -19,7 +19,6 @@ public static class PacketDecoder
         [PacketType.OpenConnection] = () => new OpenConnectionPacket(),
         [PacketType.Login] = () => new LoginPacket(),
         [PacketType.Register] = () => new RegisterPacket(),
-        [PacketType.LoginInformation] = () => new LoginInformation(),
         #endregion
 
         #region Lobby Management
