@@ -174,9 +174,21 @@ public class Client(PtyArgs args, Session session) : IDisposable
             return;
         }
         
-        _app.QueueAction(() => _contentDisplay.Content = new GameView());
+        _gameSession = new GameSession(((LobbyCreationInformationPacket)response).LobbyId, _serverConnectionHandler, true);
+        _app.QueueAction(() => _contentDisplay.Content = new GameView(OnBoardButtonClickAsync));
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
+    }
+
+    private async Task OnBoardButtonClickAsync(Button button, short x, short y)
+    {
+        if (_gameSession is null || !_gameSession.IsPlayersTurn || !await _gameSession.TryPlayPositionAsync(x, y))
+        {
+            Console.WriteLine(_gameSession!.GetObjectString());
+            return;
+        }
+
+        button.Content = new TextBlock { Text = _gameSession.PlayerCharacter };
     }
 
     private async Task LeaveLobbyAsync()
@@ -234,7 +246,8 @@ public class Client(PtyArgs args, Session session) : IDisposable
             return;
         }
 
-        _app.QueueAction(() => _contentDisplay.Content = new GameView());
+        _gameSession = new GameSession(code, _serverConnectionHandler, false);
+        _app.QueueAction(() => _contentDisplay.Content = new GameView(OnBoardButtonClickAsync));
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
     }

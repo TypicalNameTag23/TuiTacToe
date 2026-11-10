@@ -6,18 +6,24 @@ namespace Client.Game.Views;
 
 public class GameView : Drawable
 {
-    public GameView()
+    private readonly Func<Button, short, short, Task> _onBoardButtonClickAsync;
+
+    public GameView(Func<Button, short, short, Task> onBoardButtonClickAsync)
+    {
+        _onBoardButtonClickAsync = onBoardButtonClickAsync;
+        BuildDrawable();
+    }
+
+    private void BuildDrawable()
     {
         Attach(
-            new Grid
-                {
-                    RowDefinitions = RowDefinition.Of("*, 1")
-                }.SetContent(
+            new Grid { RowDefinitions = RowDefinition.Of("*, 1") }
+                .SetContent(
                     new Grid
                     {
                         RowDefinitions = RowDefinition.Of("*, 11, *"),
                         ColumnDefinitions = ColumnDefinition.Of("*, 25, *")
-                    }.SetContent(new TicTacToeBoardDrawable(), row: 1, column: 1))
+                    }.SetContent(new TicTacToeBoardDrawable(_onBoardButtonClickAsync), row: 1, column: 1))
                 .SetContent(
                     new TextBlock
                     {

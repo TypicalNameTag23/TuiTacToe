@@ -6,25 +6,45 @@ namespace Client.Game.Drawables;
 
 public class TicTacToeBoardDrawable : Drawable
 {
-    public TicTacToeBoardDrawable()
+    private readonly Func<Button, short, short, Task> _onBoardButtonClickAsync;
+
+    public TicTacToeBoardDrawable(Func<Button, short, short, Task> onBoardButtonClickAsync)
     {
-        Attach(
-            new Grid
-            {
-                RowDefinitions = RowDefinition.Of("3, 1, 3, 1, 3"),
-                ColumnDefinitions = ColumnDefinition.Of("7, 2, 7, 2, 7"),
-            }
-            .SetContent(new Button(), row: 0, column: 0)
-            .SetContent(new Button(), row: 0, column: 2)
-            .SetContent(new Button(), row: 0, column: 4)
-            .SetContent(new Button(), row: 2, column: 0)
-            .SetContent(new Button(), row: 2, column: 2)
-            .SetContent(new Button(), row: 2, column: 4)
-            .SetContent(new Button(), row: 4, column: 0)
-            .SetContent(new Button(), row: 4, column: 2)
-            .SetContent(new Button(), row: 4, column: 4));
+        _onBoardButtonClickAsync = onBoardButtonClickAsync;
+        
+        BuildDrawable();
     }
-    
+
+    private void BuildDrawable()
+    {
+        var grid = new Grid
+        {
+            RowDefinitions = RowDefinition.Of("3, 1, 3, 1, 3"),
+            ColumnDefinitions = ColumnDefinition.Of("7, 2, 7, 2, 7"),
+        };
+
+        for (var y = 0; y < 3; y++)
+        {
+            for (var x = 0; x < 3; x++)
+            {
+                var button = new Button
+                {
+                    UnfocusedColor = Defaults.ButtonUnfocusedColor,
+                    FocusedColor = Defaults.ButtonFocusedColor,
+                    DisabledColor = Defaults.ButtonDisabledColor
+                };
+
+                var indexX = (short) x;
+                var indexY = (short) y;
+                button.OnClickEvent += (_, _) => _onBoardButtonClickAsync(button, indexX, indexY);
+
+                grid.SetContent(button, x * 2, y * 2);
+            }
+        }
+        
+        Attach(grid);
+    }
+
     public override void Draw(ICanvas canvas)
     {
         if (canvas.Width < 25 || canvas.Height < 11)

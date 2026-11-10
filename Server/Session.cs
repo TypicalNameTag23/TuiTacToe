@@ -168,6 +168,12 @@ public class Session : IDisposable
                     Disconnect();
                     break;
                }
+               case PacketType.BoardPlayed:
+               {
+                    Console.WriteLine("Cool man");
+                    await _client.SendAsync(new AcceptedPacket(packet.Id));
+                    break;
+               }
                case PacketType.ViewLeaderboard:
                {
                     var leaderboard = await _leaderboardSource.GetLeaderboardAsync(5);

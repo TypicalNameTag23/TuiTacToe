@@ -197,7 +197,6 @@ public class ServerConnectionHandler(string address, int port)
           Console.WriteLine($"Received packet: {packet}");
           switch (packet.PacketType)
           {
-               case PacketType.LoginInformation:
                case PacketType.LobbyJoinInformation:
                case PacketType.LobbyCreationInformation:
                case PacketType.Denied:
