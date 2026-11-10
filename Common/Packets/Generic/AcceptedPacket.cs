@@ -1,14 +1,8 @@
-using Common.Packets.Handshake;
-
 namespace Common.Packets.Generic;
 
-public class AcceptedPacket : AbstractPacket
+public class AcceptedPacket : AbstractResponsePacket
 {
-    public override int PacketSizeBytes => PacketBaseSizeBytes;
+    internal AcceptedPacket() : base(PacketType.Accepted) { }
     
-    public override PacketType PacketType => PacketType.Accepted;
-
-    public AcceptedPacket() { }
-    
-    public AcceptedPacket(ulong id) : base(id) { }
+    public AcceptedPacket(uint id) : base(id, PacketType.Accepted) { }
 }

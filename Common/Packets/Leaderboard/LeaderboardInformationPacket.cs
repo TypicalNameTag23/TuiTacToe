@@ -1,7 +1,12 @@
 ﻿namespace Common.Packets.Leaderboard;
 
-public class LeaderboardInformationPacket : AbstractPacket
+public class LeaderboardInformationPacket : AbstractResponsePacket
 {
-    public override int PacketSizeBytes => PacketBaseSizeBytes;
-    public override PacketType PacketType => PacketType.LeaderboardInformation;
+    internal LeaderboardInformationPacket() : base(PacketType.LeaderboardInformation) { }
+    
+    public LeaderboardInformationPacket(uint id) 
+        : base(id, PacketType.LeaderboardInformation)
+    {
+        // todo
+    }
 }

@@ -9,7 +9,10 @@ switch (input)
 {
     case "1":
     {
-        var clientDirectory = Path.Join(".", "..", "..", "..", "..", "Client");
+        var currentDirectory = Directory.GetCurrentDirectory();
+        var baseDirectory = currentDirectory[..(currentDirectory.IndexOf("TuiTacToe", StringComparison.InvariantCultureIgnoreCase) + 9)];
+        Console.WriteLine(baseDirectory);
+        var clientDirectory = Path.Join(baseDirectory, "Client");
         if (!Directory.Exists(clientDirectory))
         {
             Console.WriteLine("Unable to find Client project directory, does it exist?");

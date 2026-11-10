@@ -14,4 +14,17 @@ public static class Bytes
             offset += source.Length;
         }
     }
+    
+    public static void CopyInto(this Array destination, List<byte[]> sources)
+    {
+        var offset = 0;
+        foreach (var source in sources)
+        {
+            Buffer.BlockCopy(
+                source, 0, 
+                destination, offset, source.Length);
+            
+            offset += source.Length;
+        }
+    }
 }

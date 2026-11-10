@@ -1,12 +1,8 @@
 namespace Common.Packets.Generic;
 
-public class DeniedPacket : AbstractPacket
+public class DeniedPacket : AbstractResponsePacket
 {
-    public DeniedPacket() { }
+    internal DeniedPacket() : base(PacketType.Denied) { }
     
-    public DeniedPacket(ulong id) : base(id) { }
-    
-    public override int PacketSizeBytes => PacketBaseSizeBytes;
-    
-    public override PacketType PacketType => PacketType.Denied;
+    public DeniedPacket(uint id) : base(id, PacketType.Denied) { }
 }

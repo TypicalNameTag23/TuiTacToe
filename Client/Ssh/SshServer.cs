@@ -7,7 +7,7 @@ namespace Client.Ssh;
 public class SshServer
 {
     private const int Port = 22;
-    private static readonly string ConfigFilePath = Path.Join(".", "..", "..", "..", "config.txt");
+    // private static readonly string ConfigFilePath = Path.Join(".", "..", "..", "..", "config.txt");
 
     private readonly FxSsh.SshServer _sshServer;
     private readonly List<Game.Client> _clients = [];
@@ -16,7 +16,11 @@ public class SshServer
     {
         try
         {
-            var configReader = new ConfigReader(ConfigFilePath);
+            // jank but whatever
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var baseDirectory = currentDirectory[..(currentDirectory.IndexOf("Client", StringComparison.InvariantCultureIgnoreCase) + 6)];
+            var configFilePath = Path.Combine(baseDirectory, "config.txt");
+            var configReader = new ConfigReader(configFilePath);
             _sshServer = new FxSsh.SshServer(new StartingInfo(IPAddress.Any, Port, "SSH-2.0-tic-tac-toe"));
             _sshServer.AddHostKey("rea-sha2-256", configReader.ReadValue("RSA_KEY"));
             _sshServer.AddHostKey("rsa-sha2-512", configReader.ReadValue("RSA_KEY"));
@@ -40,6 +44,7 @@ public class SshServer
 
     public void Stop()
     {
+        Console.WriteLine("Stopping server...");
         _clients.ForEach(it =>
         {
             // it.DisconnectAsync().Wait();

@@ -1,11 +1,9 @@
 namespace Common.Packets.Leaderboard;
 
-public class ViewLeaderboardPacket : AbstractPacket
+public class ViewLeaderboardPacket : AbstractRespondablePacket
 {
-    public ViewLeaderboardPacket() { }
-
-    public ViewLeaderboardPacket(ulong id) : base(id) { }
-    
-    public override int PacketSizeBytes => PacketBaseSizeBytes;
-    public override PacketType PacketType => PacketType.ViewLeaderboard;
+    public ViewLeaderboardPacket() : base(PacketType.ViewLeaderboard)
+    {
+        // todo
+    }
 }

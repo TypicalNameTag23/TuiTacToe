@@ -2,6 +2,8 @@
 
 public class UpdateBoardPacket : AbstractPacket
 {
-    public override int PacketSizeBytes => PacketBaseSizeBytes;
-    public override PacketType PacketType => PacketType.UpdateBoard;
+    public UpdateBoardPacket() : base(PacketType.UpdateBoard)
+    {
+        // todo
+    }
 }

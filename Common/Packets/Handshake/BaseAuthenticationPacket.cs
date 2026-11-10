@@ -1,24 +1,13 @@
-using System.Buffers;
-using System.Text;
-using Common.Utilities;
-
 namespace Common.Packets.Handshake;
 
-public abstract class BaseAuthenticationPacket : AbstractPacket
+public abstract class BaseAuthenticationPacket : AbstractRespondablePacket
 {
-    private const int UsernameLengthSizeBytes = sizeof(short);
-    private const int PasswordHashSizeBytes = 64;
-    
-    public override int PacketSizeBytes => PacketBaseSizeBytes + UsernameLengthSizeBytes + UsernameLength + PasswordHashSizeBytes;
-    
     public string Username { get; private set; }
-    public short UsernameLength => (short) Username.Length;
-    public byte[] PasswordHash { get; private set; }
-    public string PasswordHashString => Convert.ToBase64String(PasswordHash);
+    public string PasswordHash { get; private set; }
 
-    internal BaseAuthenticationPacket() { }
+    internal BaseAuthenticationPacket(PacketType packetType) : base(packetType) { }
     
-    public BaseAuthenticationPacket(string username, byte[] passwordHash)
+    public BaseAuthenticationPacket(string username, string passwordHash, PacketType packetType) : base(packetType)
     {
         if (string.IsNullOrEmpty(username))
         {
@@ -27,49 +16,20 @@ public abstract class BaseAuthenticationPacket : AbstractPacket
         
         if (username.Length > short.MaxValue)
         {
-            throw new ArgumentException(nameof(username), "Username is too long.");
+            throw new ArgumentException("Username is too long.", nameof(username));
         }
         
-        if (passwordHash.Length != PasswordHashSizeBytes)
-        {
-            throw new ArgumentException(nameof(passwordHash), $"Password hash should be {PasswordHashSizeBytes} bytes long.");
-        }
+        // todo: password hash validation
         
         Username = username;
         PasswordHash = passwordHash;
     }
 
-    public override byte[] Encode()
+    protected override void RegisterValues()
     {
-        var basePacketBytes = base.Encode();
-        var usernameLengthBytes = BitConverters.GetBytesEndianIndependent(UsernameLength);
-        var usernameBytes = Encoding.ASCII.GetBytes(Username);
+        base.RegisterValues();
         
-        var encoded = new byte[PacketSizeBytes];
-        encoded.CopyInto(basePacketBytes, usernameLengthBytes, usernameBytes, PasswordHash);
-        return encoded;
-    }
-
-    internal override bool Load(ReadOnlySequence<byte> buffer)
-    {
-        if (!base.Load(buffer) || buffer.Length < PacketBaseSizeBytes + UsernameLengthSizeBytes)
-        {
-            return false;
-        }
-        
-        var usernameLength = buffer.GetShort(PacketBaseSizeBytes, UsernameLengthSizeBytes);
-        if (buffer.Length < PacketBaseSizeBytes + UsernameLengthSizeBytes + usernameLength)
-        {
-            return false;
-        }
-        
-        Username = buffer.GetString(PacketBaseSizeBytes + UsernameLengthSizeBytes, usernameLength);
-        
-        var passwordHashBytes = buffer
-            .Slice(PacketBaseSizeBytes + UsernameLengthSizeBytes + usernameLength, PasswordHashSizeBytes)
-            .FirstSpan;
-        PasswordHash = [..passwordHashBytes];
-
-        return true;
+        RegisterDynamicSizeValue(() => Username, value => Username = value);
+        RegisterFixedSizeValue(() => PasswordHash, value => PasswordHash = value, 64);
     }
 }

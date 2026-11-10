@@ -1,27 +1,44 @@
-using System.Buffers;
-using System.Diagnostics;
 using System.Net.Sockets;
 using Common;
+using Common.Decoding;
+using Common.Encoding;
 using Common.Packets;
 using Common.Packets.Generic;
 using Common.Packets.Handshake;
-using Common.Utilities;
 
 namespace Client.Game;
 
-public class ServerConnectionHandler(string address, int port)
+public class ServerConnectionHandler
 {
-     private static readonly TimeSpan TimeOut = TimeSpan.FromSeconds(5);
+     private readonly string _address;
+     private readonly int _port;
      private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(5);
-
-     private Dictionary<ulong, AbstractPacket> _pendingPackets = [];
+     
      private CancellationTokenSource? _cancellationTokenSource;
-     private NetworkStreamProcessor? _networkStreamProcessor;
+     private PacketHandler? _packetProcessor;
      private TcpClient? _server;
 
      public EventHandler<EventArgs>? OnConnectionClosed;
      public EventHandler<AbstractPacket>? OnPacketReceived;
+     private readonly PacketEncoder _encoder;
+     private readonly PacketDecoder _decoder;
      public bool Connected => _server != null;
+
+     public ServerConnectionHandler(string address, int port)
+     {
+          _address = address;
+          _port = port;
+          _encoder = PacketEncoderFactory
+               .New()
+               .WithDefaultEncoders()
+               .Create();
+
+          _decoder = PacketDecoderFactory
+               .New()
+               .WithDefaultDecoders()
+               .WithDefaultPackets()
+               .Create();
+     }
      
      public async Task<bool> TryConnectAsync(CancellationTokenSource cancellationTokenSource)
      {
@@ -34,15 +51,21 @@ public class ServerConnectionHandler(string address, int port)
           try
           {
                _server = new TcpClient();
-               await _server.ConnectAsync(address, port);
-               _networkStreamProcessor = new NetworkStreamProcessor(_server.GetStream(), ProcessIncomingData);
-               _ = _networkStreamProcessor.StartAsync(cancellationTokenSource.Token);
+               await _server.ConnectAsync(_address, _port);
+               _packetProcessor = new PacketHandler(_server, _encoder, _decoder, TimeSpan.FromSeconds(5));
+               _packetProcessor.OnPacketReceived += OnPacketReceived;
+               _ = _packetProcessor.StartAsync(cancellationTokenSource.Token);
 
                var openConnectionPacket = new OpenConnectionPacket();
-               await TrySendAsync(openConnectionPacket);
-               
-               var response = await GetResponseAsync(openConnectionPacket.Id);
-               Console.WriteLine(response);
+               // await TrySendAsync(openConnectionPacket);
+               // await TrySendAsync(openConnectionPacket);
+               // await TrySendAsync(openConnectionPacket);
+               // await TrySendAsync(openConnectionPacket);
+               // await TrySendAsync(openConnectionPacket);
+               // await TrySendAsync(openConnectionPacket);
+               // await TrySendAsync(openConnectionPacket);
+               // await TrySendAsync(openConnectionPacket);
+               var response = await TrySendAndGetResponseAsync(openConnectionPacket);
                if (response is not { PacketType: PacketType.Accepted })
                {
                     Console.WriteLine("Failed to connect to the backend server, server responded with non Accepted packet!");
@@ -51,6 +74,7 @@ public class ServerConnectionHandler(string address, int port)
                     return false;
                }
 
+               // TrySendAsync(new AcceptedPacket(1));
                _ = StartHeartbeatTask();
           }
           catch (SocketException e)
@@ -63,30 +87,6 @@ public class ServerConnectionHandler(string address, int port)
           }
           
           return true;
-     }
-
-     private Task StartHeartbeatTask()
-     {
-          return Task.Run(async () =>
-          {
-               while (_cancellationTokenSource is { IsCancellationRequested: false })
-               {
-                    var packet = new HeartbeatPacket();
-                    if (!await TrySendAsync(packet))
-                    {
-                         return;
-                    }
-                    
-                    var response = await GetResponseAsync(packet);
-                    if (response is not { PacketType: PacketType.Accepted })
-                    {
-                         Console.WriteLine("Didn't receive heartbeat response from server, disconnecting.");
-                         await CloseConnectionAsync();
-                    }
-                    
-                    await Task.Delay(HeartbeatInterval);
-               }
-          });
      }
 
      public async Task DisconnectAsync()
@@ -111,7 +111,7 @@ public class ServerConnectionHandler(string address, int port)
           
           try
           {
-               await _server!.SendAsync(packet);
+               await _packetProcessor!.TrySendAsync(packet);
           }
           catch (Exception e)
           {
@@ -125,43 +125,44 @@ public class ServerConnectionHandler(string address, int port)
           return true;
      }
 
-     public Task<AbstractPacket?> GetResponseAsync(AbstractPacket packet, CancellationToken cancellationToken = default)
-     {
-          return GetResponseAsync(packet.Id, cancellationToken);
-     }
-     
-     public Task<AbstractPacket?> GetResponseAsync(ulong id, CancellationToken cancellationToken = default)
+     public async Task<AbstractResponsePacket?> TrySendAndGetResponseAsync(AbstractRespondablePacket packet)
      {
           if (!Connected)
           {
-               return Task.FromResult<AbstractPacket?>(null);
+               return null;
           }
-
-          using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationTokenSource!.Token);
-          var token = linkedTokenSource.Token;
-          var stopwatch = new Stopwatch();
-          stopwatch.Start();
           
+          try
+          {
+               return await _packetProcessor!.TrySendAndGetResponseAsync(packet);
+          }
+          catch (Exception e)
+          {
+               Console.WriteLine("Failed to send packet");
+               Console.WriteLine(e);
+               
+               await CloseConnectionAsync();
+               return null;
+          }
+     }
+
+     private Task StartHeartbeatTask()
+     {
           return Task.Run(async () =>
           {
-               while (!token.IsCancellationRequested)
+               while (_cancellationTokenSource is { IsCancellationRequested: false })
                {
-                    if (_pendingPackets.Remove(id, out var packet))
+                    var packet = new HeartbeatPacket();
+                    var response = await TrySendAndGetResponseAsync(packet);
+                    if (response is not { PacketType: PacketType.Accepted })
                     {
-                         stopwatch.Stop();
-                         return packet;
+                         Console.WriteLine("Didn't receive heartbeat response from server, disconnecting.");
+                         await CloseConnectionAsync();
                     }
-
-                    if (stopwatch.Elapsed > TimeOut)
-                    {
-                         stopwatch.Stop();
-                         await DisconnectAsync();
-                         break;
-                    }
+                    
+                    await Task.Delay(HeartbeatInterval);
                }
-               
-               return null;
-          }, token);
+          });
      }
 
      private async Task CloseConnectionAsync()
@@ -178,50 +179,5 @@ public class ServerConnectionHandler(string address, int port)
           _server = null;
           
           OnConnectionClosed?.Invoke(this, EventArgs.Empty);
-     }
-
-     private int ProcessIncomingData(ReadOnlySequence<byte> buffer)
-     {
-          if (!PacketDecoder.TryReadPacket(ref buffer, out var packet))
-          {
-               return 0;
-          }
-          
-          OnPacketReceived?.Invoke(this, packet!);
-          HandlePacket(packet!);
-          return packet!.PacketSizeBytes;
-     }
-
-     private void HandlePacket(AbstractPacket packet)
-     {
-          Console.WriteLine($"Received packet: {packet}");
-          switch (packet.PacketType)
-          {
-               case PacketType.LobbyJoinInformation:
-               case PacketType.LobbyCreationInformation:
-               case PacketType.Denied:
-               case PacketType.Accepted:
-               {
-                    _pendingPackets.Add(packet.Id, packet);
-                    break;
-               }
-               case PacketType.OpponentConnected:
-               case PacketType.OpponentDisconnected:
-               case PacketType.GameCompleted:
-               {
-                    OnPacketReceived?.Invoke(this, packet);
-                    break;
-               }
-               case PacketType.CloseConnection:
-               {
-                    CloseConnectionAsync().Wait();
-                    break;
-               }
-               default:
-               {
-                    Console.WriteLine("Received client side packet from server, dropping.");
-                    break;
-               }
-          }
      }
 }

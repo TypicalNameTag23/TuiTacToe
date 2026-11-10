@@ -2,9 +2,8 @@
 
 public class RegisterPacket : BaseAuthenticationPacket
 {
-    public override PacketType PacketType => PacketType.Register;
-
-    internal RegisterPacket() { }
+    internal RegisterPacket() : base(PacketType.Register) { }
     
-    public RegisterPacket(string username, byte[] passwordHash) : base(username, passwordHash) { }
+    public RegisterPacket(string username, string passwordHash) 
+        : base(username, passwordHash, PacketType.Register) { }
 }

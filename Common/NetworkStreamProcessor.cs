@@ -62,7 +62,7 @@ public class NetworkStreamProcessor(NetworkStream stream, Func<ReadOnlySequence<
             var dataProcessed = processData(buffer);
             if (dataProcessed == -1)
             {
-                return;
+                continue;
             }
 
             reader.AdvanceTo(buffer.GetPosition(dataProcessed));

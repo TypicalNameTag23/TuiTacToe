@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Text;
 
 namespace Common.Utilities;
 
@@ -7,16 +6,16 @@ public static class ReadOnlySequences
 {
     extension(ReadOnlySequence<byte> sequence)
     {
-        public short GetShort(int start, int length)
+        public short GetShort(int start)
         {
-            var slice = sequence.Slice(start, length).FirstSpan;
+            var slice = sequence.Slice(start, sizeof(short)).FirstSpan;
 
             return BitConverters.ToShortEndianIndependent(slice);
         }
 
-        public int GetInt(int start, int length)
+        public int GetInt(int start)
         {
-            var slice = sequence.Slice(start, length).FirstSpan;
+            var slice = sequence.Slice(start, sizeof(int)).FirstSpan;
 
             return BitConverters.ToIntEndianIndependent(slice);
         }
@@ -35,7 +34,7 @@ public static class ReadOnlySequences
 
         public string GetString(int start, int length)
         {
-            return Encoding.ASCII.GetString(sequence.Slice(start, length).FirstSpan);
+            return System.Text.Encoding.ASCII.GetString(sequence.Slice(start, length).FirstSpan);
         }
     }
 }

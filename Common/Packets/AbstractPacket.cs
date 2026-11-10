@@ -1,6 +1,3 @@
-using System.Buffers;
-using Common.Utilities;
-
 namespace Common.Packets;
 
 /// <summary>
@@ -8,72 +5,49 @@ namespace Common.Packets;
 /// </summary>
 public abstract class AbstractPacket
 {
-    // todo hack
-    protected static ulong _currentPacketId;
-    public const int PacketBaseSizeBytes = PacketTypeSizeBytes + IdSizeBytes;
-    public const int PacketTypeSizeBytes = sizeof(short);
-    public const int IdSizeBytes = sizeof(ulong);
-
-    /// <summary>
-    /// The size of the packet in bytes
-    /// </summary>
-    /// todo change to bits, not everything is byte aligned
-    public abstract int PacketSizeBytes { get; }
+    public const int AbstractPacketBaseSize = sizeof(short);
     
-    /// <summary>
-    /// The <see cref="PacketType"/>
-    /// </summary>
-    public abstract PacketType PacketType { get; }
-    
-    /// <summary>
-    /// The id of the packet
-    /// </summary>
-    public ulong Id { get; private set; }
+    public PacketType PacketType { get; private set; }
+    public List<RegisteredValue> RegisteredValues { get; } = [];
 
-    public AbstractPacket()
+    internal AbstractPacket()
     {
-        Id = NextPacketId();
-    }
-
-    public AbstractPacket(ulong id)
-    {
-        Id = id;
-    }
-
-    public static ulong NextPacketId()
-    {
-        _currentPacketId++;
-        return _currentPacketId - 1;
+        RegisterValues();
     }
     
-    /// <summary>
-    /// Encodes this packet into a byte array
-    /// </summary>
-    /// <returns>The byte array</returns>
-    public virtual byte[] Encode()
+    public AbstractPacket(PacketType packetType)
     {
-        var packetTypeBytes = BitConverters.GetBytesEndianIndependent((short) PacketType);
-        var packetIdBytes = BitConverters.GetBytesEndianIndependent(Id);
+        PacketType = packetType;
         
-        var encoded = new byte[PacketBaseSizeBytes];
-        encoded.CopyInto(packetTypeBytes, packetIdBytes);
-        return encoded;
+        RegisterValues();
     }
-
-    /// <summary>
-    /// Reads in data from the buffer and populates the packet
-    /// </summary>
-    /// <param name="buffer">The buffer to read from</param>
-    internal virtual bool Load(ReadOnlySequence<byte> buffer)
+    
+    protected virtual void RegisterValues()
     {
-        if (buffer.Length < PacketBaseSizeBytes)
-        {
-            return false;
-        }
-        
-        Id = buffer.GetULong(PacketTypeSizeBytes, IdSizeBytes);
-        
-        return true;
+        RegisterFixedSizeValue(
+            () => PacketType,
+            value => PacketType = value,
+            sizeof(short));
+    }
+    
+    protected void RegisterFixedSizeValue<T>(Func<T?> getter, Action<T> setter, int sizeBytes)
+    {
+        RegisteredValues.Add(
+            new RegisteredValue(
+                () => getter(),
+                value => setter((T) value), 
+                typeof(T), 
+                sizeBytes));
+    }
+    
+    protected void RegisterDynamicSizeValue<T>(Func<T?> getter, Action<T> setter)
+    {
+        RegisteredValues.Add(
+            new RegisteredValue(
+                () => getter(),
+                value => setter((T) value), 
+                typeof(T), 
+                null));
     }
 
     public override string ToString() => this.GetObjectString();

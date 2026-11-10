@@ -24,6 +24,17 @@ public static class BitConverters
         return bytes;
     }
     
+    public static byte[] GetBytesEndianIndependent(uint value)
+    {
+        var bytes = BitConverter.GetBytes(value);
+        if (BitConverter.IsLittleEndian)
+        {
+            Array.Reverse(bytes);
+        }
+        
+        return bytes;
+    }
+    
     public static byte[] GetBytesEndianIndependent(long value)
     {
         var bytes = BitConverter.GetBytes(value);

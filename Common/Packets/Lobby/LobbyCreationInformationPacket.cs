@@ -1,41 +1,21 @@
-﻿using System.Buffers;
-using Common.Utilities;
+﻿namespace Common.Packets.Lobby;
 
-namespace Common.Packets.Lobby;
-
-public class LobbyCreationInformationPacket : AbstractPacket
+public class LobbyCreationInformationPacket : AbstractResponsePacket
 {
-    private const int LobbyIdSizeBytes = sizeof(int);
+    public int LobbyId { get; set; }
 
-    public override int PacketSizeBytes => PacketBaseSizeBytes + LobbyIdSizeBytes;
-    public override PacketType PacketType => PacketType.LobbyCreationInformation;
-    public int LobbyId { get; private set; }
+    internal LobbyCreationInformationPacket() : base(PacketType.LobbyCreationInformation) { }
     
-    internal LobbyCreationInformationPacket() { }
-
-    public LobbyCreationInformationPacket(ulong id, int lobbyId) : base(id)
+    public LobbyCreationInformationPacket(int lobbyId, uint id) 
+        : base(id, PacketType.LobbyCreationInformation)
     {
         LobbyId = lobbyId;
     }
     
-    public override byte[] Encode()
+    protected override void RegisterValues()
     {
-        var basePacketBytes = base.Encode();
-        var lobbyIdBytes = BitConverters.GetBytesEndianIndependent(LobbyId);
-
-        var encoded = new byte[PacketBaseSizeBytes + LobbyIdSizeBytes];
-        encoded.CopyInto(basePacketBytes, lobbyIdBytes);
-        return encoded;
-    }
-
-    internal override bool Load(ReadOnlySequence<byte> buffer)
-    {
-        if (!base.Load(buffer) || buffer.Length < PacketBaseSizeBytes)
-        {
-            return false;
-        }
+        base.RegisterValues();
         
-        LobbyId = buffer.GetInt(PacketBaseSizeBytes, LobbyIdSizeBytes);
-        return true;
+        RegisterDynamicSizeValue(() => LobbyId, value => LobbyId = value);
     }
 }

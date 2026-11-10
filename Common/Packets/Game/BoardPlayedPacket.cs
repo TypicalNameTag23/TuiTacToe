@@ -1,47 +1,28 @@
-﻿using System.Buffers;
-using System.Text;
-using Common.Utilities;
+﻿namespace Common.Packets.Game;
 
-namespace Common.Packets.Game;
-
-public class BoardPlayedPacket : AbstractPacket
+public class BoardPlayedPacket : AbstractRespondablePacket
 {
-    private const int XSizeBytes = sizeof(short);
-    private const int YSizeBytes = sizeof(short);
+    public short X { get; set; }
+    public short Y { get; set; }
+
+    internal BoardPlayedPacket() : base(PacketType.BoardPlayed) { }
     
-    public short X { get; private set; }
-    public short Y { get; private set; }
-    public override int PacketSizeBytes => PacketBaseSizeBytes + XSizeBytes + YSizeBytes;
-    public override PacketType PacketType => PacketType.BoardPlayed;
-    
-    internal BoardPlayedPacket() { }
-    
-    public BoardPlayedPacket(short x, short y)
+    public BoardPlayedPacket(short x, short y) : base(PacketType.BoardPlayed)
     {
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(x, 2);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(y, 2);
+        ArgumentOutOfRangeException.ThrowIfLessThan(x, 0);
+        ArgumentOutOfRangeException.ThrowIfLessThan(y, 0);
+        
         X = x;
         Y = y;
     }
 
-    public override byte[] Encode()
+    protected override void RegisterValues()
     {
-        var basePacketBytes = base.Encode();
-        var xBytes = BitConverters.GetBytesEndianIndependent(X);
-        var yBytes = BitConverters.GetBytesEndianIndependent(Y);
-        
-        var encoded = new byte[PacketSizeBytes];
-        encoded.CopyInto(basePacketBytes, xBytes, yBytes);
-        return encoded;
-    }
+        base.RegisterValues();
 
-    internal override bool Load(ReadOnlySequence<byte> buffer)
-    {
-        if (!base.Load(buffer) || buffer.Length < PacketSizeBytes)
-        {
-            return false;
-        }
-        
-        X = buffer.GetShort(PacketBaseSizeBytes, XSizeBytes);
-        Y = buffer.GetShort(PacketBaseSizeBytes, YSizeBytes);
-        return true;
+        RegisterFixedSizeValue(() => X, value => X = value, sizeof(short));
+        RegisterFixedSizeValue(() => Y, value => Y = value, sizeof(short));
     }
 }

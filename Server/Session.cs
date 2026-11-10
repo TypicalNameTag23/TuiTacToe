@@ -1,12 +1,12 @@
-using System.Buffers;
 using System.Net.Sockets;
 using Common;
+using Common.Decoding;
+using Common.Encoding;
 using Common.Packets;
 using Common.Packets.Game;
 using Common.Packets.Generic;
 using Common.Packets.Handshake;
 using Common.Packets.Lobby;
-using Common.Utilities;
 using Server.Data;
 using Server.Data.Models;
 
@@ -24,10 +24,12 @@ public class Session : IDisposable
      private readonly ILeaderboardSource _leaderboardSource;
      
      private CancellationTokenSource _cancellationTokenSource;
-     private NetworkStreamProcessor _networkStreamProcessor;
+     private PacketHandler _packetHandler;
      private DateTime _lastHeartbeat;
      private TcpClient? _client;
-     
+     private readonly PacketEncoder _encoder;
+     private readonly PacketDecoder _decoder;
+
      public User? User { get; private set; }
      public GameSession? GameSession { get; private set; }
      public bool Authenticated => User != null;
@@ -48,28 +50,30 @@ public class Session : IDisposable
           _getGameSession = getGameSession;
           _tryCreateUserAsync = tryCreateUserAsync;
           _validatePasswordAsync = validatePasswordAsync;
-          _client.GetStream().ReadTimeout = 50;
+          _encoder = PacketEncoderFactory
+               .New()
+               .WithDefaultEncoders()
+               .Create();
+
+          _decoder = PacketDecoderFactory
+               .New()
+               .WithDefaultDecoders()
+               .WithDefaultPackets()
+               .Create(); 
+          
+          // _client.GetStream().ReadTimeout = 50;
      }
 
      public async Task StartAsync()
      {
           _cancellationTokenSource = new CancellationTokenSource();
-          _networkStreamProcessor = new NetworkStreamProcessor(_client!.GetStream(), ProcessIncomingData);
-
-          try
-          {
-               var processorTask = _networkStreamProcessor.StartAsync(_cancellationTokenSource.Token);
-               var heartbeatTask = StartHeartbeatTask();
-               _lastHeartbeat = DateTime.UtcNow;
-
-               await Task.WhenAll(heartbeatTask, processorTask);
-          }
-          catch (Exception e)
-          {
-               Console.WriteLine("An exception occured while processing incoming data, disconnecting from client.");
-               Console.WriteLine(e);
-               Disconnect();
-          }
+          _packetHandler = new PacketHandler(_client!, _encoder, _decoder, TimeSpan.FromSeconds(5));
+          _packetHandler.OnPacketReceived += (_, packet) => _ = OnPacketReceivedAsync(packet);
+          _lastHeartbeat = DateTime.UtcNow;
+          
+          var packetHandlerTask = _packetHandler.StartAsync(_cancellationTokenSource.Token);
+          var heartbeatTask = StartHeartbeatTask();
+          await Task.WhenAll(packetHandlerTask, heartbeatTask);
      }
 
      private Task StartHeartbeatTask()
@@ -82,13 +86,13 @@ public class Session : IDisposable
                     if (DateTime.UtcNow - _lastHeartbeat >= HeartbeatInterval)
                     {
                          Console.WriteLine($"{(DateTime.UtcNow - _lastHeartbeat).Seconds} seconds since last heartbeat, disconnecting.");
-                         Disconnect();
+                         await DisconnectAsync();
                     }
                }
           });
      }
 
-     public void Disconnect()
+     public async Task DisconnectAsync()
      {
           GameSession?.OnGameCompleted -= OnGameCompletedAsync;
           GameSession?.OnGuestConnected -= OnOpponentConnectedAsync;
@@ -96,11 +100,11 @@ public class Session : IDisposable
           GameSession?.Disconnect(this);
           GameSession = null;
           
-          _client?.SendAsync(new CloseConnectionPacket()).Wait();
+          await _packetHandler.TrySendAsync(new CloseConnectionPacket());
           _client?.Close();
           _client = null;
 
-          _cancellationTokenSource.Cancel();
+          await _cancellationTokenSource.CancelAsync();
           OnDisconnect?.Invoke(this, EventArgs.Empty);
      }
 
@@ -110,25 +114,14 @@ public class Session : IDisposable
           _client?.Dispose();
      }
 
-     private int ProcessIncomingData(ReadOnlySequence<byte> buffer)
+     private async Task OnPacketReceivedAsync(AbstractPacket packet)
      {
-          if (!PacketDecoder.TryReadPacket(ref buffer, out var packet))
-          {
-               return -1;
-          }
-          
-          _ = HandlePacketAsync(packet!);
-          return packet!.PacketSizeBytes;
-     }
-
-     private async Task HandlePacketAsync(AbstractPacket packet)
-     {
-          Console.WriteLine($"Received packet: {packet}");
           switch (packet.PacketType)
           {
                case PacketType.OpenConnection:
                {
-                    await _client.SendAsync(new AcceptedPacket(packet.Id));
+                    var p = (AbstractRespondablePacket)packet;
+                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id));
                     break;
                }
                case PacketType.Register:
@@ -143,12 +136,14 @@ public class Session : IDisposable
                }
                case PacketType.CreateLobby:
                {
-                    await CreateLobbyAsync(packet.Id);
+                    var p = (AbstractRespondablePacket)packet;
+                    await CreateLobbyAsync(p.Id);
                     break;
                }
                case PacketType.LeaveLobby:
                {
-                    await HandleLeaveLobbyPacketAsync(packet.Id);
+                    var p = (AbstractRespondablePacket)packet;
+                    await HandleLeaveLobbyPacketAsync(p.Id);
                     break;
                }
                case PacketType.JoinLobby:
@@ -159,19 +154,22 @@ public class Session : IDisposable
                case PacketType.Heartbeat:
                {
                     _lastHeartbeat = DateTime.UtcNow;
-                    await _client.SendAsync(new AcceptedPacket(packet.Id));
+                    var p = (AbstractRespondablePacket)packet;
+                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id));
                     break;
                }
                case PacketType.CloseConnection:
                {
                     Console.WriteLine($"Client {_client!.Client.RemoteEndPoint} disconnected.");
-                    Disconnect();
+                    await DisconnectAsync();
                     break;
                }
                case PacketType.BoardPlayed:
                {
                     Console.WriteLine("Cool man");
-                    await _client.SendAsync(new AcceptedPacket(packet.Id));
+                    
+                    var p = (AbstractRespondablePacket)packet;
+                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id));
                     break;
                }
                case PacketType.ViewLeaderboard:
@@ -184,7 +182,8 @@ public class Session : IDisposable
                default:
                {
                     Console.WriteLine($"Received server side packet from client {_client!.Client.RemoteEndPoint}");
-                    await _client.SendAsync(new DeniedPacket(packet.Id));
+                    var p = (AbstractRespondablePacket)packet;
+                    await _packetHandler.TrySendAsync(new DeniedPacket(p.Id));
                     break;
                }
           }
@@ -194,14 +193,14 @@ public class Session : IDisposable
      {
           if (!Authenticated || GameSession != null)
           {
-               await _client.SendAsync(new DeniedPacket(packet.Id));
+               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
           }
           
           GameSession = _getGameSession(packet.LobbyId);
           if (GameSession == null)
           {
-               await _client.SendAsync(new DeniedPacket(packet.Id));
+               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
           }
 
@@ -209,40 +208,40 @@ public class Session : IDisposable
           GameSession.OnGameCompleted += OnGameCompletedAsync; 
           GameSession.OnOpponentDisconnected += OnOpponentDisconnectedAsync; 
           
-          await _client.SendAsync(new LobbyJoinInformationPacket(packet.Id, GameSession.Host!.User!.Username));
+          await _packetHandler.TrySendAsync(new LobbyJoinInformationPacket(GameSession.Host!.User!.Username, packet.Id));
           
           throw new NotImplementedException();
      }
 
      private async Task RegisterAsync(RegisterPacket packet)
      {
-          User = await _tryCreateUserAsync(packet.Username, packet.PasswordHashString);
+          User = await _tryCreateUserAsync(packet.Username, packet.PasswordHash);
           if (!Authenticated)
           {
-               await _client.SendAsync(new DeniedPacket(packet.Id));
+               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
           }
           
-          await _client.SendAsync(new AcceptedPacket(packet.Id));
+          await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
      }
 
      private async Task LoginAsync(LoginPacket packet)
      {
-          User = await _validatePasswordAsync(packet.Username, packet.PasswordHashString);
+          User = await _validatePasswordAsync(packet.Username, packet.PasswordHash);
           if (!Authenticated)
           {
-               await _client.SendAsync(new DeniedPacket(packet.Id));
+               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
           }
           
-          await _client.SendAsync(new AcceptedPacket(packet.Id));
+          await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
      }
 
-     private async Task HandleLeaveLobbyPacketAsync(ulong id)
+     private async Task HandleLeaveLobbyPacketAsync(uint id)
      {
           if (!Authenticated || GameSession == null)
           {
-               await _client.SendAsync(new DeniedPacket(id));
+               await _packetHandler.TrySendAsync(new DeniedPacket(id));
                return;
           }
           
@@ -251,14 +250,14 @@ public class Session : IDisposable
           GameSession.OnOpponentDisconnected -= OnOpponentDisconnectedAsync; 
           GameSession.Disconnect(this);
           GameSession = null;
-          await _client.SendAsync(new AcceptedPacket(id));
+          await _packetHandler.TrySendAsync(new AcceptedPacket(id));
      }
 
-     private async Task CreateLobbyAsync(ulong id)
+     private async Task CreateLobbyAsync(uint id)
      {
           if (!Authenticated || GameSession != null)
           {
-               await _client.SendAsync(new DeniedPacket(id));
+               await _packetHandler.TrySendAsync(new DeniedPacket(id));
                return;
           }
                     
@@ -267,17 +266,17 @@ public class Session : IDisposable
           GameSession.OnGuestConnected += OnOpponentConnectedAsync; 
           GameSession.OnOpponentDisconnected += OnOpponentDisconnectedAsync; 
           
-          await _client!.SendAsync(new LobbyCreationInformationPacket(id, GameSession.LobbyId));
+          await _packetHandler.TrySendAsync(new LobbyCreationInformationPacket(GameSession.LobbyId, id));
      }
 
      private async void OnOpponentConnectedAsync(object? sender, Session session)
      {
-          await _client.SendAsync(new OpponentConnectedPacket());
+          await _packetHandler.TrySendAsync(new OpponentConnectedPacket());
      }
 
      private async void OnOpponentDisconnectedAsync(object? sender, EventArgs e)
      {
-          await _client.SendAsync(new OpponentDisconnectedPacket());
+          await _packetHandler.TrySendAsync(new OpponentDisconnectedPacket());
      }
 
      private async void OnGameCompletedAsync(object? sender, Session? winner)
@@ -287,6 +286,6 @@ public class Session : IDisposable
                Console.WriteLine("yay im the winner");
           }
           
-          await _client.SendAsync(new GameCompletedPacket());
+          await _packetHandler.TrySendAsync(new GameCompletedPacket());
      }
 }

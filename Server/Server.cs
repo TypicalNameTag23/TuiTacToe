@@ -35,17 +35,17 @@ public class Server : IDisposable
         }
     }
 
-    public void Stop()
+    public async Task StopAsync()
     {
         _listener.Stop();
         Running = false;
         
-        _sessions.ForEach(it =>
+        foreach (var session in _sessions)
         {
-            it.OnDisconnect -= OnSessionDisconnected;
-            it.Disconnect();
-            it.Dispose();
-        });
+            session.OnDisconnect -= OnSessionDisconnected;
+            await session.DisconnectAsync();
+            session.Dispose();
+        }
     }
 
     private void Poll()
@@ -61,10 +61,9 @@ public class Server : IDisposable
                 TryCreateUserAsync,
                 ValidatePasswordAsync);
             session.OnDisconnect += OnSessionDisconnected;
-            
-            _sessions.Add(session);
             _ = session.StartAsync();
 
+            _sessions.Add(session);
             Console.WriteLine($"Client {client.Client.RemoteEndPoint} connected");
         }
     }
