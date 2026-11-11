@@ -215,19 +215,19 @@ public class Session : IDisposable
 
      private async Task RegisterAsync(RegisterPacket packet)
      {
-          User = await _tryCreateUserAsync(packet.Username, packet.PasswordHash);
+          User = await _tryCreateUserAsync(packet.Username, Convert.ToBase64String(packet.PasswordHash));
           if (!Authenticated)
           {
                await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
           }
           
-          await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
+          await _packetHandler.TrySendAsync(new AcceptedPacket(packet.Id));
      }
 
      private async Task LoginAsync(LoginPacket packet)
      {
-          User = await _validatePasswordAsync(packet.Username, packet.PasswordHash);
+          User = await _validatePasswordAsync(packet.Username, Convert.ToBase64String(packet.PasswordHash));
           if (!Authenticated)
           {
                await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));

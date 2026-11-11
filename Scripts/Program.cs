@@ -9,8 +9,12 @@ switch (input)
 {
     case "1":
     {
-        var currentDirectory = Directory.GetCurrentDirectory();
-        var baseDirectory = currentDirectory[..(currentDirectory.IndexOf("TuiTacToe", StringComparison.InvariantCultureIgnoreCase) + 9)];
+        var baseDirectory = Directory.GetCurrentDirectory();
+        while (!baseDirectory.EndsWith("TuiTacToe") && baseDirectory != $"{Path.PathSeparator}")
+        {
+            baseDirectory = Directory.GetParent(baseDirectory)!.FullName;
+        }
+        
         Console.WriteLine(baseDirectory);
         var clientDirectory = Path.Join(baseDirectory, "Client");
         if (!Directory.Exists(clientDirectory))

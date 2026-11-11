@@ -6,7 +6,7 @@ public static class TcpClients
 {
     public static async Task SendAsync(this TcpClient? tcpClient, byte[] message, CancellationToken cancellationToken = default)
     {
-        if (tcpClient == null)
+         if (tcpClient == null)
         {
             return;
         }

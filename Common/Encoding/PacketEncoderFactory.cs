@@ -26,6 +26,8 @@ public class PacketEncoderFactory
         WithEncoder(new UIntEncoder());
         WithEncoder(new ULongEncoder());
         WithEncoder(new PacketTypeEncoder());
+        WithEncoder(new StringValueEncoder());
+        WithEncoder(new ByteArrayValueEncoder());
 
         return this;
     }

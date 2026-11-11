@@ -13,14 +13,14 @@ public static class HashHelper
     /// </summary>
     /// <param name="password">The password to hash</param>
     /// <returns>The hashes bytes</returns>
-    public static string HashPassword(string password)
+    public static byte[] HashPassword(string password)
     {
         var salt = RandomNumberGenerator.GetBytes(16);
         var pbkdf2 = Rfc2898DeriveBytes.Pbkdf2(password, salt, 10000, HashAlgorithmName.SHA256, 48);
         
         var hashed = new byte[64];
         hashed.CopyInto(salt, pbkdf2);
-        return Convert.ToBase64String(hashed);
+        return hashed;
     }
     
     public static byte[] HashPassword(string password, byte[] salt)

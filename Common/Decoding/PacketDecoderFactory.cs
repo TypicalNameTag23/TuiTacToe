@@ -78,6 +78,8 @@ public class PacketDecoderFactory
         RegisterDecoder(new LongDecoder());
         RegisterDecoder(new UIntDecoder());
         RegisterDecoder(new ULongDecoder());
+        RegisterDecoder(new StringValueDecoder());
+        RegisterDecoder(new ByteArrayValueDecoder());
 
         return this;
     }

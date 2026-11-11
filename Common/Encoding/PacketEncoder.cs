@@ -20,7 +20,7 @@ public class PacketEncoder(Dictionary<Type, IValueEncoder> valueEncoders)
             var encodedValue = encoder.Encode(registeredValue.Value);
             if (!registeredValue.IsFixedSize)
             {
-                encodedValues.Add(BitConverter.GetBytes(encodedValue.Length));
+                encodedValues.Add(BitConverters.GetBytesEndianIndependent(encodedValue.Length));
                 encodedDataLength += sizeof(int);
             }
 
