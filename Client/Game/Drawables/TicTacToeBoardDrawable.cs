@@ -7,12 +7,18 @@ namespace Client.Game.Drawables;
 public class TicTacToeBoardDrawable : Drawable
 {
     private readonly Func<Button, short, short, Task> _onBoardButtonClickAsync;
+    private Button[,] _buttons = new Button[3,3];
 
     public TicTacToeBoardDrawable(Func<Button, short, short, Task> onBoardButtonClickAsync)
     {
         _onBoardButtonClickAsync = onBoardButtonClickAsync;
         
         BuildDrawable();
+    }
+
+    public Button GetButton(short x, short y)
+    {
+        return _buttons[x,y];
     }
 
     private void BuildDrawable()
@@ -39,6 +45,7 @@ public class TicTacToeBoardDrawable : Drawable
                 button.OnClickEvent += (_, _) => _onBoardButtonClickAsync(button, indexX, indexY);
 
                 grid.SetContent(button, x * 2, y * 2);
+                _buttons[x,y] = button;
             }
         }
         

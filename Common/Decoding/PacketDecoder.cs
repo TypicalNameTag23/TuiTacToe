@@ -63,9 +63,17 @@ public class PacketDecoder
                 valueSizeBytes = buffer.GetInt(byteOffset);
                 byteOffset += sizeof(int);
             }
+
+            if (valueSizeBytes == 0)
+            {
+                registeredValue.Value = null;
+            }
+            else
+            {
+                registeredValue.Value = valueDecoder.Decode(
+                    buffer.Slice(byteOffset, (int) valueSizeBytes!).FirstSpan);
+            }
             
-            registeredValue.Value = valueDecoder.Decode(
-                buffer.Slice(byteOffset, (int) valueSizeBytes!).FirstSpan);
             byteOffset += (int) valueSizeBytes;
         }
         

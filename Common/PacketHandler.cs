@@ -10,7 +10,7 @@ namespace Common;
 
 public class PacketHandler
 {
-     private uint packetId = 0;
+     private uint packetId;
      private readonly TimeSpan _timeOut;
      private CancellationToken _cancellationToken;
 
@@ -42,6 +42,7 @@ public class PacketHandler
           if (packet is AbstractRespondablePacket responsePacket)
           {
                responsePacket.Id = packetId++;
+               _pendingResponsePackets[responsePacket.Id] = null;
           }
           
           try
@@ -65,8 +66,6 @@ public class PacketHandler
           try
           {
                await TrySendAsync(packet);
-               _pendingResponsePackets[packet.Id] = null;
-               
                return await GetResponseAsync(packet);
           }
           catch (Exception e)
@@ -77,7 +76,7 @@ public class PacketHandler
                return null;
           }
      }
-
+     
      private Task<AbstractResponsePacket?> GetResponseAsync(AbstractRespondablePacket packet)
      {
           var stopwatch = new Stopwatch();
@@ -86,6 +85,12 @@ public class PacketHandler
           {
                while (!_cancellationToken.IsCancellationRequested)
                {
+                    if (!_pendingResponsePackets.ContainsKey(packet.Id))
+                    {
+                         Console.WriteLine(packet.Id);
+                         return null;
+                    }
+                    
                     if (_pendingResponsePackets[packet.Id] != null)
                     {
                          _pendingResponsePackets.Remove(packet.Id, out var response);
@@ -97,6 +102,7 @@ public class PacketHandler
                     if (stopwatch.Elapsed > _timeOut)
                     {
                          stopwatch.Stop();
+                         _pendingResponsePackets.Remove(packet.Id, out var _);
                          return null;
                     }
                }

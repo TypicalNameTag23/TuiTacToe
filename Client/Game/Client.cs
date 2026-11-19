@@ -22,7 +22,7 @@ public class Client(PtyArgs args, Session session) : IDisposable
     private const int BackendServerPort = 4343;
 
     private ContentControl _contentDisplay;
-    private TicTacToeGame? _gameSession;
+    private GameSessionManager _gameSessionManager;
     private Application _app;
 
     private CancellationTokenSource _cancellationTokenSource;
@@ -31,7 +31,7 @@ public class Client(PtyArgs args, Session session) : IDisposable
     public async Task StartAsync()
     {
         _contentDisplay = new ContentControl();
-        
+
         var terminal = new SshTerminal(args, new XTermInputParser());
         _app = new Application(terminal)
         {
@@ -43,9 +43,9 @@ public class Client(PtyArgs args, Session session) : IDisposable
 
         _serverConnectionHandler = new ServerConnectionHandler(BackendServerAddress, BackendServerPort);
         _serverConnectionHandler.OnConnectionClosed += OnDisconnectedFromServer;
-        _serverConnectionHandler.OnPacketReceived += OnPacketReceived;
         await ConnectAsync();
-        
+
+        _gameSessionManager = new GameSessionManager(_serverConnectionHandler);
         var applicationThread = new Thread(() =>
         {
             try
@@ -61,19 +61,6 @@ public class Client(PtyArgs args, Session session) : IDisposable
         });
         
         applicationThread.Start();
-    }
-
-    // like yeah idk this code is shit but whatever
-    private void OnPacketReceived(object? _, AbstractPacket packet)
-    {
-        if (packet is OpponentConnectedPacket opponentConnectedPacket)
-        {
-            
-        }
-        if (packet is OpponentDisconnectedPacket opponentDisconnectedPacket)
-        {
-            
-        }
     }
 
     public async Task DisconnectAsync()
@@ -144,50 +131,37 @@ public class Client(PtyArgs args, Session session) : IDisposable
 
     private async Task OnCreateLobbyClickAsync()
     {
-        if (_contentDisplay.Content is not MainPageView view)
+        if (_gameSessionManager.InGame || _contentDisplay.Content is not MainPageView view)
         {
             return;
         }
 
         view.DisableButtons();
-        var packet = new CreateLobbyPacket();
-        var response = await _serverConnectionHandler.TrySendAndGetResponseAsync(packet);
-        if (response is not { PacketType: PacketType.LobbyCreationInformation })
+        if (!await _gameSessionManager.TryCreateGameLobby())
         {
             view.EnableButtons();
             return;
         }
         
-        // _gameSession = new TicTacToeGame(((LobbyCreationInformationPacket)response).LobbyId, _serverConnectionHandler, true);
-        _app.QueueAction(() => _contentDisplay.Content = new GameView(OnBoardButtonClickAsync));
+        _app.QueueAction(() => _contentDisplay.Content = new GameView(_gameSessionManager, _app));
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
     }
 
-    private async Task OnBoardButtonClickAsync(Button button, short x, short y)
-    {
-        // if (_gameSession is null || !_gameSession.IsPlayersTurn || !await _gameSession.TryPlayPositionAsync(x, y))
-        // {
-            // Console.WriteLine(_gameSession!.GetObjectString());
-            // return;
-        // }
-
-        // button.Content = new TextBlock { Text = _gameSession.PlayerCharacter };
-    }
-
     private async Task LeaveLobbyAsync()
     {
+        if (!_gameSessionManager.InGame)
+        {
+            return;
+        }
+        
         _app.RemoveGlobalBoundKey(CtrlCKey);
-        var packet = new LeaveLobbyPacket();
-        var response = await _serverConnectionHandler.TrySendAndGetResponseAsync(packet);
-        if (response is not { PacketType: PacketType.Accepted })
+        if (!await _gameSessionManager.TryLeaveGameLobby())
         {
             _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
             return;
         }
 
-        _gameSession = null;
-        _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
         _app.QueueAction(() => _contentDisplay.Content = new MainPageView(OnCreateLobbyClickAsync, OnJoinLobbyClick, OnLeaderboardClickAsync));
     }
@@ -211,16 +185,13 @@ public class Client(PtyArgs args, Session session) : IDisposable
         }
 
         view.DisableButtons();
-        var packet = new JoinLobbyPacket(code);
-        var response = await _serverConnectionHandler.TrySendAndGetResponseAsync(packet);
-        if (response is not { PacketType: PacketType.LobbyJoinInformation })
+        if (!await _gameSessionManager.TryJoinLobby(code))
         {
             view.EnableButtons();
             return;
         }
-
-        // _gameSession = new TicTacToeGame(code, _serverConnectionHandler, false);
-        _app.QueueAction(() => _contentDisplay.Content = new GameView(OnBoardButtonClickAsync));
+        
+        _app.QueueAction(() => _contentDisplay.Content = new GameView(_gameSessionManager, _app));
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
     }

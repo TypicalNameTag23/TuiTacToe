@@ -60,8 +60,6 @@ public class Session : IDisposable
                .WithDefaultDecoders()
                .WithDefaultPackets()
                .Create(); 
-          
-          // _client.GetStream().ReadTimeout = 50;
      }
 
      public async Task StartAsync()
@@ -97,6 +95,7 @@ public class Session : IDisposable
           GameSession?.OnGameCompleted -= OnGameCompletedAsync;
           GameSession?.OnGuestConnected -= OnOpponentConnectedAsync;
           GameSession?.OnOpponentDisconnected -= OnOpponentDisconnectedAsync;
+          GameSession?.OnBoardUpdated -= OnBoardUpdatedAsync;
           GameSession?.Disconnect(this);
           GameSession = null;
           
@@ -106,6 +105,16 @@ public class Session : IDisposable
 
           await _cancellationTokenSource.CancelAsync();
           OnDisconnect?.Invoke(this, EventArgs.Empty);
+     }
+
+     private async void OnBoardUpdatedAsync(object? sender, (Session, short, short) e)
+     {
+          if (e.Item1 == this)
+          {
+               return;
+          }
+
+          await _packetHandler.TrySendAsync(new UpdateBoardPacket(e.Item2, e.Item3));
      }
 
      public void Dispose()
@@ -166,10 +175,7 @@ public class Session : IDisposable
                }
                case PacketType.BoardPlayed:
                {
-                    Console.WriteLine("Cool man");
-                    
-                    var p = (AbstractRespondablePacket)packet;
-                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id));
+                    await PlayAsync((BoardPlayedPacket) packet);
                     break;
                }
                case PacketType.ViewLeaderboard:
@@ -187,6 +193,20 @@ public class Session : IDisposable
                     break;
                }
           }
+     }
+
+     private async Task PlayAsync(BoardPlayedPacket packet)
+     {
+          var a = GameSession!.PlayPosition(this, packet.X, packet.Y);
+          Console.WriteLine(a);
+          
+          if (GameSession is null || !a)
+          {
+               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
+               return;
+          }
+          
+          await _packetHandler.TrySendAsync(new AcceptedPacket(packet.Id));
      }
 
      private async Task JoinLobbyAsync(JoinLobbyPacket packet)
@@ -207,6 +227,7 @@ public class Session : IDisposable
           GameSession.Connect(this);
           GameSession.OnGameCompleted += OnGameCompletedAsync; 
           GameSession.OnOpponentDisconnected += OnOpponentDisconnectedAsync; 
+          GameSession.OnBoardUpdated += OnBoardUpdatedAsync; 
           
           await _packetHandler.TrySendAsync(new LobbyJoinInformationPacket(GameSession.Host!.User!.Username, packet.Id));
           
@@ -265,13 +286,14 @@ public class Session : IDisposable
           GameSession.OnGameCompleted += OnGameCompletedAsync; 
           GameSession.OnGuestConnected += OnOpponentConnectedAsync; 
           GameSession.OnOpponentDisconnected += OnOpponentDisconnectedAsync; 
+          GameSession.OnBoardUpdated += OnBoardUpdatedAsync; 
           
           await _packetHandler.TrySendAsync(new LobbyCreationInformationPacket(GameSession.LobbyId, id));
      }
 
      private async void OnOpponentConnectedAsync(object? sender, Session session)
      {
-          await _packetHandler.TrySendAsync(new OpponentConnectedPacket());
+          await _packetHandler.TrySendAsync(new OpponentConnectedPacket(session.User!.Username));
      }
 
      private async void OnOpponentDisconnectedAsync(object? sender, EventArgs e)
@@ -286,6 +308,6 @@ public class Session : IDisposable
                Console.WriteLine("yay im the winner");
           }
           
-          await _packetHandler.TrySendAsync(new GameCompletedPacket());
+          await _packetHandler.TrySendAsync(new GameCompletedPacket(winner?.User?.Username));
      }
 }

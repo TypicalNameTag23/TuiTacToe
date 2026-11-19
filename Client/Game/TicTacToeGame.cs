@@ -1,110 +1,59 @@
-using Common.Packets;
-using Common.Packets.Game;
-
-namespace Client.Game;
-
-public class TicTacToeGame(PlayerType startingPlayer)
-{
-    private PlayerType?[][] _board =  new PlayerType?[3][];
-    
-    public PlayerType CurrentPlayer { get; private set; } = startingPlayer;
-    public EventHandler<PlayerType>? OnPlayerWin;
-    
-    public bool PlayPosition(PlayerType player, short x, short y)
-    {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(2, x);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(2, y);
-        ArgumentOutOfRangeException.ThrowIfLessThan(0, y);
-        ArgumentOutOfRangeException.ThrowIfLessThan(0, y);
-        if (CurrentPlayer != player || _board[x][y] != null)
-        {
-            return false;
-        }
-        
-        _board[x][y] = player;
-        CheckForWinner();
-        return true;
-    }
-
-    // fuck ass ugly algorithm
-    private void CheckForWinner()
-    {
-        // Check upper left corner
-        var upperLeft = _board[0][0];
-        if (upperLeft != null)
-        {
-            if (_board[0][1] == upperLeft && _board[0][2] == upperLeft)
-            {
-                // win
-            }
-            
-            if (_board[1][0] == upperLeft && _board[2][0] == upperLeft)
-            {
-                // win
-            }
-        }
-        
-        var center = _board[1][1];
-        if (center != null)
-        {
-            if (_board[1][0] == center && _board[1][2] == center)
-            {
-                
-            }
-            
-            if (_board[0][1] == center && _board[2][1] == center)
-            {
-                
-            }
-            
-            if (_board[0][0] == center && _board[2][2] == center)
-            {
-                
-            }
-            
-            if (_board[0][2] == center && _board[2][0] == center)
-            {
-                
-            }
-        }
-
-        var botttomRight = _board[2][2];
-        if (botttomRight != null)
-        {
-            if (_board[2][1] == upperLeft && _board[2][0] == upperLeft)
-            {
-                // win
-            }
-            
-            if (_board[1][2] == upperLeft && _board[0][2] == upperLeft)
-            {
-                // win
-            }
-        }
-    }
-
-    // public async Task<bool> TryPlayPositionAsync(short x, short y)
-    // {
-    //     if (!IsPlayersTurn)
-    //     {
-    //         return false;
-    //     }
-    //     
-    //     IsPlayersTurn = false;
-    //     var packet = new BoardPlayedPacket(x, y);
-    //     if (!await connectionHandler.TrySendAsync(packet))
-    //     {
-    //         return false;
-    //     }
-    //
-    //     var response = await connectionHandler.GetResponseAsync(packet);
-    //     if (response is { PacketType: PacketType.Accepted })
-    //     {
-    //         return true;
-    //     }
-    //     
-    //     IsPlayersTurn = true;
-    //     return false;
-    //
-    // }
-}
+// using Common.Packets;
+// using Common.Packets.Game;
+//
+// namespace Client.Game;
+//
+// public class TicTacToeGame(PlayerType startingPlayer)
+// {
+//     private PlayerType?[][] _board =  new PlayerType?[3][];
+//     
+//     public PlayerType CurrentPlayer { get; private set; } = startingPlayer;
+//     public EventHandler<PlayerType>? OnGameCompleted;
+//     
+//     public bool PlayPosition(short x, short y)
+//     {
+//         if (x < 0 || x > 2 || y < 0 || y > 2 || _board[x][y] != null)
+//         {
+//             return false;
+//         }
+//
+//         _board[x][y] = CurrentPlayer;
+//         CheckForCompletion();
+//         CurrentPlayer = CurrentPlayer == PlayerType.X 
+//             ? PlayerType.O 
+//             : PlayerType.X;
+//
+//         return true;
+//     }
+//
+//     private void CheckForCompletion()
+//     {
+//         if (!_board.Any(t => t.Any(s => s == null)))
+//         {
+//             return;
+//         }
+//         
+//         for (var i = 0; i < _board.Length; i++)
+//         {
+//             if (_board[i][0] != null && _board[i][1] == _board[i][0] && _board[i][2] == _board[i][0])
+//             {
+//                 OnGameCompleted?.Invoke(this, CurrentPlayer);
+//             }
+//             
+//             if (_board[0][i] != null && _board[1][i] == _board[0][i] && _board[2][i] == _board[0][i])
+//             {
+//                 OnGameCompleted?.Invoke(this, CurrentPlayer);
+//             }
+//         }
+//
+//         if (_board[0][0] != null && _board[1][1] == _board[0][0] && _board[2][2] == _board[0][0])
+//         {
+//             OnGameCompleted?.Invoke(this, CurrentPlayer);
+//         }
+//
+//         if (_board[0][2] != null && _board[1][1] == _board[0][2] && _board[2][0] == _board[0][2])
+//         {
+//             OnGameCompleted?.Invoke(this, CurrentPlayer);
+//         }
+//     }
+// }

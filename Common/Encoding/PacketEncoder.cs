@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Common.Encoding.ValueEncoders;
 using Common.Packets;
 using Common.Utilities;
@@ -16,11 +17,30 @@ public class PacketEncoder(Dictionary<Type, IValueEncoder> valueEncoders)
             {
                 throw new Exception($"Encoder not found for type {registeredValue.Type}");
             }
-            
-            var encodedValue = encoder.Encode(registeredValue.Value);
-            if (!registeredValue.IsFixedSize)
+
+            byte[] encodedValue;
+            if (registeredValue.IsFixedSize)
             {
-                encodedValues.Add(BitConverters.GetBytesEndianIndependent(encodedValue.Length));
+                if (registeredValue.Value == null)
+                {
+                    throw new Exception($"Fixed size values can not be null!");
+                }
+                
+                encodedValue = encoder.Encode(registeredValue.Value);
+            } 
+            else
+            {
+                if (registeredValue.Value == null)
+                {
+                    encodedValue = [];
+                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(0));
+                }
+                else
+                {
+                    encodedValue = encoder.Encode(registeredValue.Value);
+                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(encodedValue.Length));
+                }
+                
                 encodedDataLength += sizeof(int);
             }
 

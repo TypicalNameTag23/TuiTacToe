@@ -1,4 +1,4 @@
-namespace Client.Game;
+namespace Common;
 
 public enum PlayerType
 {

@@ -53,18 +53,10 @@ public class ServerConnectionHandler
                _server = new TcpClient();
                await _server.ConnectAsync(_address, _port);
                _packetProcessor = new PacketHandler(_server, _encoder, _decoder, TimeSpan.FromSeconds(5));
-               _packetProcessor.OnPacketReceived += OnPacketReceived;
+               _packetProcessor.OnPacketReceived += (s, p) => OnPacketReceived?.Invoke(s, p);
                _ = _packetProcessor.StartAsync(cancellationTokenSource.Token);
 
                var openConnectionPacket = new OpenConnectionPacket();
-               // await TrySendAsync(openConnectionPacket);
-               // await TrySendAsync(openConnectionPacket);
-               // await TrySendAsync(openConnectionPacket);
-               // await TrySendAsync(openConnectionPacket);
-               // await TrySendAsync(openConnectionPacket);
-               // await TrySendAsync(openConnectionPacket);
-               // await TrySendAsync(openConnectionPacket);
-               // await TrySendAsync(openConnectionPacket);
                var response = await TrySendAndGetResponseAsync(openConnectionPacket);
                if (response is not { PacketType: PacketType.Accepted })
                {

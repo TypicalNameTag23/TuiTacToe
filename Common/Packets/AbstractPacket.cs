@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Common.Packets;
 
 /// <summary>
@@ -50,5 +52,18 @@ public abstract class AbstractPacket
                 null));
     }
 
-    public override string ToString() => this.GetObjectString();
+    public override string ToString()
+    {
+        var sb = new StringBuilder(this.PacketType.ToString());
+
+        sb.Append(" { ");
+        
+        foreach (var registeredValue in RegisteredValues)
+        {
+            sb.Append($"{registeredValue.Value}, ");
+        }
+        
+        sb.Append(" }");
+        return sb.ToString();
+    }
 }

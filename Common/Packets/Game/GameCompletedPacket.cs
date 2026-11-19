@@ -2,8 +2,20 @@
 
 public class GameCompletedPacket : AbstractPacket
 {
-    public GameCompletedPacket() : base(PacketType.GameCompleted)
+    public string? WinnerUsername { get; set; }
+
+    internal GameCompletedPacket() : base(PacketType.GameCompleted) { }
+    
+    public GameCompletedPacket(string? winnerUsername) : base(PacketType.GameCompleted)
     {
-        // todo
+        WinnerUsername = winnerUsername;
+    }
+    
+    
+    protected override void RegisterValues()
+    {
+        base.RegisterValues();
+
+        RegisterDynamicSizeValue(() => WinnerUsername, value => WinnerUsername = value);
     }
 }
