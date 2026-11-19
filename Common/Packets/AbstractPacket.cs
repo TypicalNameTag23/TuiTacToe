@@ -9,8 +9,9 @@ public abstract class AbstractPacket
 {
     public const int AbstractPacketBaseSize = sizeof(short);
     
+    internal readonly List<RegisteredValue> RegisteredValues = [];
+
     public PacketType PacketType { get; private set; }
-    public List<RegisteredValue> RegisteredValues { get; } = [];
 
     internal AbstractPacket()
     {

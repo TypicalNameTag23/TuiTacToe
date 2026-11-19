@@ -1,5 +1,4 @@
 using System.Net;
-using Client.Ssh.Parsing;
 using FxSsh;
 using FxSsh.Services;
 
@@ -65,7 +64,6 @@ public class SshServer
         Console.WriteLine($"Client connection accepted");
 
         session.ServiceRegistered += ServiceRegistered;
-        session.ConfigureKeepalive(TimeSpan.Zero);
     }
 
     private void ServiceRegistered(object? sender, SshService e)

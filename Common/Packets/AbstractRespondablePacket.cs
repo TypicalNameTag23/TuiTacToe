@@ -4,7 +4,7 @@ namespace Common;
 
 public class AbstractRespondablePacket : AbstractPacket
 {
-    public uint Id;
+    public uint Id { get; internal set; }
 
     internal AbstractRespondablePacket() { }
     

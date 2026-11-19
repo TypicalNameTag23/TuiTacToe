@@ -9,9 +9,15 @@ public static class Debug
     {
         var type = obj.GetType();
         var sb = new StringBuilder($"{type.Name} {{ ");
-        foreach (var fieldInfo in obj.GetType().GetProperties())
+        var properties = type.GetProperties();
+        for (var i = 0; i < properties.Length; i++)
         {
-            sb.Append($"{fieldInfo.Name}: {fieldInfo.GetValue(obj)}, ");
+            var fieldInfo = properties[i];
+            sb.Append($"{fieldInfo.Name}: {fieldInfo.GetValue(obj)}");
+            if (i < properties.Length - 1)
+            {
+                sb.Append(", ");
+            }
         }
 
         sb.Append('}');

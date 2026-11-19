@@ -10,7 +10,9 @@ namespace Common;
 
 public class PacketHandler
 {
-     private uint packetId;
+     private ulong _totalDataReceived;
+     private ulong _totalDataSent;
+     private uint _packetId;
      private readonly TimeSpan _timeOut;
      private CancellationToken _cancellationToken;
 
@@ -41,7 +43,7 @@ public class PacketHandler
      {
           if (packet is AbstractRespondablePacket responsePacket)
           {
-               responsePacket.Id = packetId++;
+               responsePacket.Id = _packetId++;
                _pendingResponsePackets[responsePacket.Id] = null;
           }
           
@@ -85,12 +87,6 @@ public class PacketHandler
           {
                while (!_cancellationToken.IsCancellationRequested)
                {
-                    if (!_pendingResponsePackets.ContainsKey(packet.Id))
-                    {
-                         Console.WriteLine(packet.Id);
-                         return null;
-                    }
-                    
                     if (_pendingResponsePackets[packet.Id] != null)
                     {
                          _pendingResponsePackets.Remove(packet.Id, out var response);
@@ -119,7 +115,8 @@ public class PacketHandler
                return -1;
           }
           
-          Console.WriteLine($"Received packet: {packet}");
+          _totalDataReceived += (ulong) bytesRead;
+          Console.WriteLine($"Received packet: {packet} [{bytesRead}, {_totalDataReceived}]");
           if (packet is AbstractResponsePacket responsePacket 
               && _pendingResponsePackets.ContainsKey(responsePacket.Id))
           {
