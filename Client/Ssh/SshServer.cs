@@ -57,7 +57,6 @@ public class SshServer
         foreach (var client in _clientSessionMap.Keys)
         {
             client.DisconnectAsync().Wait();
-            client.Dispose();
         }
     }
     
@@ -119,6 +118,5 @@ public class SshServer
         
         _clientSessionMap[client].Disconnect();
         _clientSessionMap.Remove(client);
-        client.Dispose();
     }
 }

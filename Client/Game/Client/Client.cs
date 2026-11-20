@@ -8,11 +8,11 @@ using Painter.Platform;
 
 namespace Client.Game;
 
-public partial class Client(Terminal terminal, IPAddress serverAddress, ushort serverPort) : IDisposable
+public partial class Client(Terminal terminal, IPAddress serverAddress, ushort serverPort)
 {
     private Application _app;
 
-    private CancellationTokenSource _cancellationTokenSource;
+    private CancellationTokenSource? _cancellationTokenSource;
     private ServerConnectionHandler _serverConnectionHandler;
     private GameSessionManager _gameSessionManager;
 
@@ -51,16 +51,9 @@ public partial class Client(Terminal terminal, IPAddress serverAddress, ushort s
 
     public async Task DisconnectAsync()
     {
-        OnDisconnect?.Invoke(this, EventArgs.Empty);
-        await _cancellationTokenSource.CancelAsync();
         await _serverConnectionHandler.DisconnectAsync();
-        
         _app.Kill();
-    }
-
-    public void Dispose()
-    {
-        _cancellationTokenSource.Dispose();
+        OnDisconnect?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnGameCompleted(object? sender, bool e)
@@ -95,7 +88,6 @@ public partial class Client(Terminal terminal, IPAddress serverAddress, ushort s
     private async Task ConnectToBackendAsync()
     {
         _cancellationTokenSource = new CancellationTokenSource();
-        
         if (await _serverConnectionHandler.TryConnectAsync(_cancellationTokenSource))
         {
             _app.QueueAction(() => _contentDisplay.Content = new LoginView(OnLoginButtonClickAsync, OnSignUpButtonClickAsync));
