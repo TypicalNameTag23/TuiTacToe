@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
-using Common.Utilities;
 
-namespace Common;
+namespace Common.Utilities;
 
 /// <summary>
 /// Static utility class for hashing strings
@@ -13,9 +12,9 @@ public static class HashHelper
     /// </summary>
     /// <param name="password">The password to hash</param>
     /// <returns>The hashes bytes</returns>
-    public static byte[] HashPassword(string password)
+    public static byte[] HashPassword(string password, out byte[] salt)
     {
-        var salt = RandomNumberGenerator.GetBytes(16);
+        salt = RandomNumberGenerator.GetBytes(16);
         var pbkdf2 = Rfc2898DeriveBytes.Pbkdf2(password, salt, 10000, HashAlgorithmName.SHA256, 48);
         
         var hashed = new byte[64];
@@ -32,13 +31,12 @@ public static class HashHelper
         return hashed;
     }
     
-    public static bool ValidatePassword(string password, string passwordHash)
-    {
-        var bytes = Convert.FromBase64String(passwordHash);
-        var salt = bytes[..16];
-        var hash = bytes[16..];
-        var hashed = Rfc2898DeriveBytes.Pbkdf2(password, salt, 10000, HashAlgorithmName.SHA256, 48);
-        
-        return hash.Where((@byte, index) => @byte != hashed[index]).Any();
-    }
+    // public static bool ValidatePassword(string password, string passwordHash)
+    // {
+    //     var bytes = Convert.FromBase64String(passwordHash);
+    //     var salt = bytes[..16];
+    //     var hash = bytes[16..];
+    //     
+    //     return hash.Where((@byte, index) => @byte != hashed[index]).Any();
+    // }
 }

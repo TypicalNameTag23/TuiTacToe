@@ -4,6 +4,6 @@ public class RegisterPacket : BaseAuthenticationPacket
 {
     internal RegisterPacket() : base(PacketType.Register) { }
     
-    public RegisterPacket(string username, byte[] passwordHash) 
-        : base(username, passwordHash, PacketType.Register) { }
+    public RegisterPacket(string username, string password) 
+        : base(username, password, PacketType.Register) { }
 }

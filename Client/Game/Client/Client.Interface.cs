@@ -1,76 +1,19 @@
 using Client.Game.Drawables;
 using Client.Game.Views;
-using Client.Ssh;
-using Client.Ssh.Parsing;
-using Common;
 using Common.Packets;
 using Common.Packets.Handshake;
 using Common.Packets.Leaderboard;
-using Common.Packets.Lobby;
-using FxSsh;
-using FxSsh.Services;
 using Painter;
 using Painter.Drawables;
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
 namespace Client.Game;
 
-public class Client(PtyArgs args, Session session) : IDisposable
+// Interface actions are held here
+public partial class Client
 {
     private static readonly Key CtrlCKey = new(ConsoleKey.C, ConsoleModifiers.Control);
-    private const string BackendServerAddress = "127.0.0.1";
-    private const int BackendServerPort = 4343;
-
     private ContentControl _contentDisplay;
-    private GameSessionManager _gameSessionManager;
-    private Application _app;
-
-    private CancellationTokenSource _cancellationTokenSource;
-    private ServerConnectionHandler _serverConnectionHandler;
-
-    public async Task StartAsync()
-    {
-        _contentDisplay = new ContentControl();
-
-        var terminal = new SshTerminal(args, new XTermInputParser());
-        _app = new Application(terminal)
-        {
-            Content = new Grid { RowDefinitions = RowDefinition.Of("1, *") }
-                .SetContent(new FpsTacker())
-                .SetContent(_contentDisplay, row: 1)
-        };
-        _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
-
-        _serverConnectionHandler = new ServerConnectionHandler(BackendServerAddress, BackendServerPort);
-        _serverConnectionHandler.OnConnectionClosed += OnDisconnectedFromServer;
-        await ConnectAsync();
-
-        _gameSessionManager = new GameSessionManager(_serverConnectionHandler);
-        var applicationThread = new Thread(() =>
-        {
-            try
-            {
-                _app.Start();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Something occured and the application crashed, disconnecting!");
-                Console.WriteLine(e);
-                _ = DisconnectAsync();
-            }
-        });
-        
-        applicationThread.Start();
-    }
-
-    public async Task DisconnectAsync()
-    {
-        await _serverConnectionHandler.DisconnectAsync();
-        
-        _app.Kill();
-        session.Disconnect();
-    }
-
+    
     private async Task OnLoginButtonClickAsync(string username, string password)
     {
         if (_contentDisplay.Content is not LoginView view)
@@ -79,7 +22,7 @@ public class Client(PtyArgs args, Session session) : IDisposable
         }
         
         view.DisableButtons();
-        var loginPacket = new LoginPacket(username, HashHelper.HashPassword(password));
+        var loginPacket = new LoginPacket(username, password);
         var response = await _serverConnectionHandler.TrySendAndGetResponseAsync(loginPacket);
         if (response is not { PacketType: PacketType.Accepted })
         {
@@ -97,7 +40,7 @@ public class Client(PtyArgs args, Session session) : IDisposable
             return;
         }
         
-        var loginPacket = new RegisterPacket(username, HashHelper.HashPassword(password));
+        var loginPacket = new RegisterPacket(username, password);
         var response = await _serverConnectionHandler.TrySendAndGetResponseAsync(loginPacket);
         if (response is not { PacketType: PacketType.Accepted })
         {
@@ -116,17 +59,8 @@ public class Client(PtyArgs args, Session session) : IDisposable
         }
 
         view.DisableButtons();
-        await ConnectAsync();
+        await ConnectToBackendAsync();
         view.EnableButtons();
-    }
-
-    private async Task ConnectAsync()
-    {
-        _cancellationTokenSource = new CancellationTokenSource();
-        if (await _serverConnectionHandler.TryConnectAsync(_cancellationTokenSource))
-        {
-            _app.QueueAction(() => _contentDisplay.Content = new LoginView(OnLoginButtonClickAsync, OnSignUpButtonClickAsync));
-        }
     }
 
     private async Task OnCreateLobbyClickAsync()
@@ -146,24 +80,6 @@ public class Client(PtyArgs args, Session session) : IDisposable
         _app.QueueAction(() => _contentDisplay.Content = new GameView(_gameSessionManager, _app));
         _app.RemoveGlobalBoundKey(CtrlCKey);
         _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
-    }
-
-    private async Task LeaveLobbyAsync()
-    {
-        if (!_gameSessionManager.InGame)
-        {
-            return;
-        }
-        
-        _app.RemoveGlobalBoundKey(CtrlCKey);
-        if (!await _gameSessionManager.TryLeaveGameLobby())
-        {
-            _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { _ = LeaveLobbyAsync(); });
-            return;
-        }
-
-        _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
-        _app.QueueAction(() => _contentDisplay.Content = new MainPageView(OnCreateLobbyClickAsync, OnJoinLobbyClick, OnLeaderboardClickAsync));
     }
 
     private void OnJoinLobbyClick()
@@ -207,19 +123,6 @@ public class Client(PtyArgs args, Session session) : IDisposable
         UpdateCtrlCCloseKeyBindToBackKeyBind();
     }
 
-    private void OnDisconnectedFromServer(object? s, EventArgs e)
-    {
-        _app.RemoveGlobalBoundKey(CtrlCKey);
-        _app.AddGlobalKeyBind(CtrlCKey, (_, _) => { DisconnectAsync().Wait(); });
-        
-        if (_contentDisplay.Content is DisconnectedView)
-        {
-            return;
-        }
-        
-        _app.QueueAction(() => { _contentDisplay.Content = new DisconnectedView(OnReconnectClickAsync); });
-    }
-
     private void UpdateCtrlCCloseKeyBindToBackKeyBind()
     {
         _app.RemoveGlobalBoundKey(CtrlCKey);
@@ -231,8 +134,10 @@ public class Client(PtyArgs args, Session session) : IDisposable
         });
     }
 
-    public void Dispose()
+    private Drawable BuildApplicationContent()
     {
-        _cancellationTokenSource.Dispose();
+        return new Grid { RowDefinitions = RowDefinition.Of("1, *") }
+            .SetContent(new FpsTacker())
+            .SetContent(_contentDisplay, row: 1);
     }
 }

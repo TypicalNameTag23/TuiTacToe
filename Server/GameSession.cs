@@ -50,9 +50,10 @@ public class GameSession(int lobbyId, Session host)
         }
 
         _board[x,y] = player == Host ? PlayerType.X : PlayerType.O;
-        _currentPlayer = player == Host ? Guest : Host;
         OnBoardUpdated?.Invoke(this, (player, x, y));
         CheckForCompletion();
+        
+        _currentPlayer = player == Host ? Guest : Host;
         return true;
     }
     

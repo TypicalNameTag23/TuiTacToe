@@ -138,7 +138,7 @@ public class GameSessionManager
             case PacketType.GameCompleted:
             {
                 var gameCompletedPacket = (GameCompletedPacket) packet;
-                OnGameCompleted?.Invoke(this, gameCompletedPacket.WinnerUsername != OpponentUsername && gameCompletedPacket.WinnerUsername != null);
+                OnGameCompleted?.Invoke(this, gameCompletedPacket.WinnerUsername != null && gameCompletedPacket.WinnerUsername != OpponentUsername);
                 InGame = false;
                 LobbyCode = null;
                 OpponentUsername = null;

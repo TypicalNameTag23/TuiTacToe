@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using Common;
 using Common.Decoding;
@@ -10,8 +11,8 @@ namespace Client.Game;
 
 public class ServerConnectionHandler
 {
-     private readonly string _address;
-     private readonly int _port;
+     private readonly IPAddress _address;
+     private readonly ushort _port;
      private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(5);
      
      private CancellationTokenSource? _cancellationTokenSource;
@@ -24,7 +25,7 @@ public class ServerConnectionHandler
      private readonly PacketDecoder _decoder;
      public bool Connected => _server != null;
 
-     public ServerConnectionHandler(string address, int port)
+     public ServerConnectionHandler(IPAddress address, ushort port)
      {
           _address = address;
           _port = port;

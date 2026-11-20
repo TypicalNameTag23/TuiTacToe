@@ -3,11 +3,11 @@ namespace Common.Packets.Handshake;
 public abstract class BaseAuthenticationPacket : AbstractRespondablePacket
 {
     public string Username { get; private set; }
-    public byte[] PasswordHash { get; private set; }
+    public string Password { get; private set; }
 
     internal BaseAuthenticationPacket(PacketType packetType) : base(packetType) { }
     
-    public BaseAuthenticationPacket(string username, byte[] passwordHash, PacketType packetType) : base(packetType)
+    public BaseAuthenticationPacket(string username, string password, PacketType packetType) : base(packetType)
     {
         if (string.IsNullOrEmpty(username))
         {
@@ -19,13 +19,13 @@ public abstract class BaseAuthenticationPacket : AbstractRespondablePacket
             throw new ArgumentException("Username is too long.", nameof(username));
         }
 
-        if (passwordHash.Length != 64)
-        {
-            throw new ArgumentException("Password hash length must be 64 bytes.");
-        }
+        // if (passwordHash.Length != 64)
+        // {
+            // throw new ArgumentException("Password hash length must be 64 bytes.");
+        // }
         
         Username = username;
-        PasswordHash = passwordHash;
+        Password = password;
     }
 
     protected override void RegisterValues()
@@ -33,6 +33,6 @@ public abstract class BaseAuthenticationPacket : AbstractRespondablePacket
         base.RegisterValues();
         
         RegisterDynamicSizeValue(() => Username, value => Username = value);
-        RegisterFixedSizeValue(() => PasswordHash, value => PasswordHash = value, 64);
+        RegisterDynamicSizeValue(() => Password, value => Password = value);//, 64);
     }
 }

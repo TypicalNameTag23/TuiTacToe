@@ -1,4 +1,5 @@
 using System.Net;
+using Client.Ssh.Parsing;
 using FxSsh;
 using FxSsh.Services;
 
@@ -6,13 +7,19 @@ namespace Client.Ssh;
 
 public class SshServer
 {
-    private const int Port = 22;
-
+    private readonly ushort _port;
+    private readonly IPAddress _backendAddress;
+    private readonly ushort _backendPort;
+    
     private readonly FxSsh.SshServer _sshServer;
-    private readonly List<Game.Client> _clients = [];
+    private readonly Dictionary<Game.Client, Session> _clientSessionMap = [];
 
-    public SshServer()
+    public SshServer(ushort port, IPAddress backendAddress, ushort backendPort)
     {
+        _port = port;
+        _backendAddress = backendAddress;
+        _backendPort = backendPort;
+        
         try
         {
             // jank but whatever
@@ -23,7 +30,7 @@ public class SshServer
             }
             
             var configReader = new ConfigReader(Path.Join(directory, "config.txt"));
-            _sshServer = new FxSsh.SshServer(new StartingInfo(IPAddress.Any, Port, "SSH-2.0-tic-tac-toe"));
+            _sshServer = new FxSsh.SshServer(new StartingInfo(IPAddress.Any, port, "SSH-2.0-tic-tac-toe"));
             _sshServer.AddHostKey("rea-sha2-256", configReader.ReadValue("RSA_KEY"));
             _sshServer.AddHostKey("rsa-sha2-512", configReader.ReadValue("RSA_KEY"));
             _sshServer.AddHostKey("ecdsa-sha2-nistp256", configReader.ReadValue("EDCSA_NISTP256_KEY"));
@@ -41,16 +48,17 @@ public class SshServer
     public void Start()
     {
         _sshServer.Start();
-        Console.WriteLine($"Server up and listening on port {Port}...");
+        Console.WriteLine($"Server up and listening on port {_port}...");
     }
 
     public void Stop()
     {
         Console.WriteLine("Stopping server...");
-        _clients.ForEach(it =>
+        foreach (var client in _clientSessionMap.Keys)
         {
-            // it.DisconnectAsync().Wait();
-        });
+            client.DisconnectAsync().Wait();
+            client.Dispose();
+        }
     }
     
     private void OnConnectionAccepted(object? sender, Session session)
@@ -96,9 +104,21 @@ public class SshServer
     {
         Console.WriteLine($"Session {Convert.ToHexString(session.SessionId).Replace("-", "")} requesting new pseudo terminal");
         
-        var client = new Game.Client(e, session);
+        var terminal = new SshTerminal(e, new XTermInputParser());
+        var client = new Game.Client(terminal, _backendAddress, _backendPort);
+        client.OnDisconnect += OnClientDisconnect;
+        
         _ = client.StartAsync();
         
-        _clients.Add(client);
+        _clientSessionMap[client] = session;
+    }
+
+    private void OnClientDisconnect(object? sender, EventArgs e)
+    {
+        var client = (Game.Client) sender!;
+        
+        _clientSessionMap[client].Disconnect();
+        _clientSessionMap.Remove(client);
+        client.Dispose();
     }
 }

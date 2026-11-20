@@ -66,7 +66,7 @@ public class PacketDecoder
 
             if (valueSizeBytes == 0)
             {
-                registeredValue.Value = null;
+                    registeredValue.Value = null;
             }
             else
             {

@@ -104,6 +104,10 @@ public class GameView : Drawable
         
         _app.QueueAction(() => button.Content = new TextBlock { Text = _gameSessionManager.PlayerType == PlayerType.X ? "X" : "O" });
         var playerCharacter = _gameSessionManager.PlayerType == PlayerType.X ? "X" : "O";
-        _textBlock.Text = $"You: {playerCharacter} | Opponent: {_gameSessionManager.OpponentUsername} | OPPONENTS TURN";
+
+        if (_gameSessionManager.InGame)
+        {
+            _textBlock.Text = $"You: {playerCharacter} | Opponent: {_gameSessionManager.OpponentUsername} | OPPONENTS TURN";
+        }
     }
 }

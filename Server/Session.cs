@@ -175,7 +175,7 @@ public class Session : IDisposable
                }
                case PacketType.BoardPlayed:
                {
-                    await PlayAsync((BoardPlayedPacket) packet);
+                    await HandleBoardPlayedAsync((BoardPlayedPacket) packet);
                     break;
                }
                case PacketType.ViewLeaderboard:
@@ -188,19 +188,19 @@ public class Session : IDisposable
                default:
                {
                     Console.WriteLine($"Received server side packet from client {_client!.Client.RemoteEndPoint}");
-                    var p = (AbstractRespondablePacket)packet;
-                    await _packetHandler.TrySendAsync(new DeniedPacket(p.Id));
+                    if (packet is AbstractRespondablePacket p)
+                    {
+                         await _packetHandler.TrySendAsync(new DeniedPacket(p.Id));
+                    }
+                    
                     break;
                }
           }
      }
 
-     private async Task PlayAsync(BoardPlayedPacket packet)
+     private async Task HandleBoardPlayedAsync(BoardPlayedPacket packet)
      {
-          var a = GameSession!.PlayPosition(this, packet.X, packet.Y);
-          Console.WriteLine(a);
-          
-          if (GameSession is null || !a)
+          if (GameSession is null || !GameSession!.PlayPosition(this, packet.X, packet.Y))
           {
                await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
@@ -236,7 +236,7 @@ public class Session : IDisposable
 
      private async Task RegisterAsync(RegisterPacket packet)
      {
-          User = await _tryCreateUserAsync(packet.Username, Convert.ToBase64String(packet.PasswordHash));
+          User = await _tryCreateUserAsync(packet.Username, packet.Password);
           if (!Authenticated)
           {
                await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
@@ -248,14 +248,14 @@ public class Session : IDisposable
 
      private async Task LoginAsync(LoginPacket packet)
      {
-          User = await _validatePasswordAsync(packet.Username, Convert.ToBase64String(packet.PasswordHash));
+          User = await _validatePasswordAsync(packet.Username, packet.Password);
           if (!Authenticated)
           {
                await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
           }
           
-          await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
+          await _packetHandler.TrySendAsync(new AcceptedPacket(packet.Id));
      }
 
      private async Task HandleLeaveLobbyPacketAsync(uint id)
@@ -303,11 +303,11 @@ public class Session : IDisposable
 
      private async void OnGameCompletedAsync(object? sender, Session? winner)
      {
-          if (this == winner)
-          {
-               Console.WriteLine("yay im the winner");
-          }
-          
           await _packetHandler.TrySendAsync(new GameCompletedPacket(winner?.User?.Username));
+          
+          GameSession?.OnGameCompleted -= OnGameCompletedAsync; 
+          GameSession?.OnGuestConnected -= OnOpponentConnectedAsync; 
+          GameSession?.OnOpponentDisconnected -= OnOpponentDisconnectedAsync; 
+          GameSession = null;
      }
 }

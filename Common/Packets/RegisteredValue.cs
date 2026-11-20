@@ -16,11 +16,17 @@ public record RegisteredValue(
         get => Getter();
         set
         {
+            if (value == null)
+            {
+                Setter(value);
+                return;
+            }
+
             if (value.GetType() != Type)
             {
                 throw new InvalidOperationException($"Cannot set {value.GetType()} to {Type}");
             }
-            
+
             Setter(value);
         }
     }

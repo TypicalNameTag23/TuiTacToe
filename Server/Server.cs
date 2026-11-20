@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using Common;
+using Common.Utilities;
 using Server.Data;
 using Server.Data.Models;
 
@@ -16,7 +18,7 @@ public class Server : IDisposable
     private readonly Dictionary<int, GameSession> _gameSessionMap = [];
     
     private ILeaderboardSource _leaderboardSource = new LeaderboardSource();
-    private IUserDatabase _userDatabase = new UserDatabase();
+    private IUserDatabase _userDatabase = new InMemoryUserDatabase();
     private Random _random = new();
 
     public bool Running { get; private set; }
@@ -88,7 +90,13 @@ public class Server : IDisposable
                 return null;
             }
             
-            return !HashHelper.ValidatePassword(password, user.PasswordHash) ? null : user;
+            var hashedPassword = HashHelper.HashPassword(password, Convert.FromBase64String(user.Salt));
+            Console.WriteLine(Convert.ToBase64String(hashedPassword));
+            Console.WriteLine(user.PasswordHash);
+            var a = CryptographicOperations.FixedTimeEquals(hashedPassword,
+                Convert.FromBase64String(user.PasswordHash));
+            Console.WriteLine(a);
+            return a ? user : null;
         }
         catch (Exception e)
         {
@@ -101,7 +109,11 @@ public class Server : IDisposable
 
     private async Task<User?> TryCreateUserAsync(string username, string password)
     {
-        var user = new User(username, password);
+        var hashedPassword = HashHelper.HashPassword(password, out var salt);
+        var passwordBase64 = Convert.ToBase64String(hashedPassword);
+        var saltBase64 = Convert.ToBase64String(salt);
+        
+        var user = new User(username, passwordBase64, saltBase64);
         try
         {
             if (!await _userDatabase.CreateUserAsync(user))
