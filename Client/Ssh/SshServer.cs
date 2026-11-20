@@ -1,4 +1,5 @@
 using System.Net;
+using Client.Ssh.Parsing;
 using FxSsh;
 using FxSsh.Services;
 
