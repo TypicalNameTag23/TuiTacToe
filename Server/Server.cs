@@ -1,18 +1,14 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
-using Common;
 using Common.Utilities;
 using Server.Data;
 using Server.Data.Models;
 
 namespace Server;
 
-public class Server : IDisposable
+public class Server(int port) : IDisposable
 {
-    private const int PollTimeoutMillis = 10;
-    private const int Port = 4343;
-
     private TcpListener _listener;
     private readonly List<Session> _sessions = [];
     private readonly Dictionary<int, GameSession> _gameSessionMap = [];
@@ -26,14 +22,13 @@ public class Server : IDisposable
     public void Start()
     {
         Running = true;
-        _listener = new TcpListener(IPAddress.Any, Port);
+        _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
-        Console.WriteLine($"Server running and listening on port {Port}...");
+        Console.WriteLine($"Server running and listening on port {port}...");
 
         while (Running)
         {
             Poll();
-            Thread.Sleep(PollTimeoutMillis);
         }
     }
 
