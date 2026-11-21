@@ -59,15 +59,6 @@ public class GameSession(int lobbyId, Session host)
     
     private void CheckForCompletion()
     {
-        var isBoardFilled = _board
-            .Cast<PlayerType?>()
-            .All(position => position != null);
-
-        if (isBoardFilled)
-        {
-            OnGameCompleted?.Invoke(this, null);
-        }
-         
         for (var i = 0; i < 3; i++)
         {
             if (_board[i,0] != null && _board[i,1] == _board[i,0] && _board[i,2] == _board[i,0])
@@ -89,6 +80,15 @@ public class GameSession(int lobbyId, Session host)
         if (_board[0,2] != null && _board[1,1] == _board[0,2] && _board[2,0] == _board[0,2])
         {
             OnGameCompleted?.Invoke(this, _currentPlayer);
+        }
+        
+        var isBoardFilled = _board
+            .Cast<PlayerType?>()
+            .All(position => position != null);
+
+        if (isBoardFilled)
+        {
+            OnGameCompleted?.Invoke(this, null);
         }
     }
 }
