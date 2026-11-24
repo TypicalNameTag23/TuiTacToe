@@ -3,7 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 Console.WriteLine("Select script to run:");
-Console.WriteLine("1: Generate config file for Client SSH Server keys");
+Console.WriteLine("1: Generate config file for SshServer SSH Server keys");
 var input = Console.ReadLine();
 
 switch (input)
@@ -17,10 +17,10 @@ switch (input)
         }
         
         Console.WriteLine(baseDirectory);
-        var clientDirectory = Path.Join(baseDirectory, "Client");
+        var clientDirectory = Path.Join(baseDirectory, "SshServer");
         if (!Directory.Exists(clientDirectory))
         {
-            Console.WriteLine("Unable to find Client project directory, does it exist?");
+            Console.WriteLine("Unable to find SshServer project directory, does it exist?");
             return;
         }
 
@@ -64,10 +64,10 @@ switch (input)
         }
         
         Console.WriteLine(baseDirectory);
-        var clientDirectory = Path.Join(baseDirectory, "Client");
+        var clientDirectory = Path.Join(baseDirectory, "SshServer");
         if (!Directory.Exists(clientDirectory))
         {
-            Console.WriteLine("Unable to find Client project directory, does it exist?");
+            Console.WriteLine("Unable to find SshServer project directory, does it exist?");
             return;
         }
 

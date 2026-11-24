@@ -169,7 +169,7 @@ public class Session : IDisposable
                }
                case PacketType.CloseConnection:
                {
-                    Console.WriteLine($"Client disconnected.");
+                    Console.WriteLine($"SshServer disconnected.");
                     await DisconnectAsync();
                     break;
                }

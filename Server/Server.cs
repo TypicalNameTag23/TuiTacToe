@@ -70,7 +70,7 @@ public class Server(int port, X509Certificate2 certificate) : IDisposable
             _ = session.StartAsync();
 
             _sessions.Add(session);
-            Console.WriteLine($"Client {client.Client.RemoteEndPoint} connected");
+            Console.WriteLine($"SshServer {client.Client.RemoteEndPoint} connected");
         }
     }
 
