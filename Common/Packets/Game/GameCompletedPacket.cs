@@ -16,6 +16,6 @@ public class GameCompletedPacket : AbstractPacket
     {
         base.RegisterValues();
 
-        RegisterDynamicSizeValue(() => WinnerUsername, value => WinnerUsername = value);
+        RegisterDynamicSizeValue(nameof(WinnerUsername), () => WinnerUsername, value => WinnerUsername = value);
     }
 }

@@ -16,6 +16,6 @@ public class LobbyCreationInformationPacket : AbstractResponsePacket
     {
         base.RegisterValues();
         
-        RegisterDynamicSizeValue(() => LobbyId, value => LobbyId = value);
+        RegisterDynamicSizeValue(nameof(LobbyId), () => LobbyId, value => LobbyId = value);
     }
 }

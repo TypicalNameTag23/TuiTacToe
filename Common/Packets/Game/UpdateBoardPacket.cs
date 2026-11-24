@@ -22,7 +22,7 @@ public class UpdateBoardPacket : AbstractPacket
     {
         base.RegisterValues();
 
-        RegisterFixedSizeValue(() => X, value => X = value, sizeof(short));
-        RegisterFixedSizeValue(() => Y, value => Y = value, sizeof(short));
+        RegisterFixedSizeValue(nameof(X), () => X, value => X = value, sizeof(short));
+        RegisterFixedSizeValue(nameof(Y), () => Y, value => Y = value, sizeof(short));
     }
 }

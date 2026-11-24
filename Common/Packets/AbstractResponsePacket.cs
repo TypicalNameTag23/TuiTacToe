@@ -15,6 +15,6 @@ public abstract class AbstractResponsePacket : AbstractPacket
     {
         base.RegisterValues();
         
-        RegisterFixedSizeValue(() => Id, value => Id = value, sizeof(uint));
+        RegisterFixedSizeValue(nameof(Id), () => Id, value => Id = value, sizeof(uint));
     }
 }

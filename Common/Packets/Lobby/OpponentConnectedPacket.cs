@@ -20,6 +20,6 @@ public class OpponentConnectedPacket : AbstractPacket
     {
         base.RegisterValues();
         
-        RegisterDynamicSizeValue(() => Username, value => Username = value);
+        RegisterDynamicSizeValue(nameof(Username), () => Username, value => Username = value);
     }
 }

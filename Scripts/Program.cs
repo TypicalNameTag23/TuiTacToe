@@ -1,4 +1,5 @@
 ﻿using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 Console.WriteLine("Select script to run:");
@@ -51,6 +52,49 @@ switch (input)
         ecdsa521.Dispose();
         
         Console.WriteLine("Created config file.");
+        
+        break;
+    }
+    case "2":
+    {
+        var baseDirectory = Directory.GetCurrentDirectory();
+        while (!baseDirectory.EndsWith("TuiTacToe") && baseDirectory != $"{Path.PathSeparator}")
+        {
+            baseDirectory = Directory.GetParent(baseDirectory)!.FullName;
+        }
+        
+        Console.WriteLine(baseDirectory);
+        var clientDirectory = Path.Join(baseDirectory, "Client");
+        if (!Directory.Exists(clientDirectory))
+        {
+            Console.WriteLine("Unable to find Client project directory, does it exist?");
+            return;
+        }
+
+        FileStream fileStream;
+        var configFilePath = Path.Combine(clientDirectory, "cert.pem");
+        if (!File.Exists(configFilePath))
+        {
+            fileStream = File.Create(configFilePath);
+        }
+        else
+        {
+            File.WriteAllText(configFilePath, string.Empty);
+            fileStream = File.OpenWrite(configFilePath);
+        }
+
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var req = new CertificateRequest($"CN=localhost", key, HashAlgorithmName.SHA256);
+        using var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5),
+            DateTimeOffset.UtcNow.AddYears(5));
+        
+        using var cert2 = X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pkcs12), null);
+        
+        fileStream.Write(Encoding.ASCII.GetBytes(cert2.ExportCertificatePem()));
+        fileStream.Close();
+
+        Console.WriteLine(cert2.GetRSAPrivateKey()!.ExportRSAPrivateKeyPem());
+        var pem2 = X509Certificate2.CreateFromPem(File.ReadAllText(Path.Combine(clientDirectory, "cert.pem")));
         
         break;
     }

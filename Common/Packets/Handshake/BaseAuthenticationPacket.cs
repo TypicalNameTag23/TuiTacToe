@@ -32,7 +32,7 @@ public abstract class BaseAuthenticationPacket : AbstractRespondablePacket
     {
         base.RegisterValues();
         
-        RegisterDynamicSizeValue(() => Username, value => Username = value);
-        RegisterDynamicSizeValue(() => Password, value => Password = value);//, 64);
+        RegisterDynamicSizeValue(nameof(Username), () => Username, value => Username = value);
+        RegisterDynamicSizeValue(nameof(Password), () => Password, value => Password = value);//, 64);
     }
 }

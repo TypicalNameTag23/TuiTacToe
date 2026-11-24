@@ -28,25 +28,28 @@ public abstract class AbstractPacket
     protected virtual void RegisterValues()
     {
         RegisterFixedSizeValue(
+            nameof(PacketType),
             () => PacketType,
             value => PacketType = value,
             sizeof(short));
     }
     
-    protected void RegisterFixedSizeValue<T>(Func<T?> getter, Action<T> setter, int sizeBytes)
+    protected void RegisterFixedSizeValue<T>(string name, Func<T?> getter, Action<T> setter, int sizeBytes)
     {
         RegisteredValues.Add(
             new RegisteredValue(
+                name,
                 () => getter(),
                 value => setter((T) value), 
                 typeof(T), 
                 sizeBytes));
     }
     
-    protected void RegisterDynamicSizeValue<T>(Func<T?> getter, Action<T> setter)
+    protected void RegisterDynamicSizeValue<T>(string name, Func<T?> getter, Action<T> setter)
     {
         RegisteredValues.Add(
             new RegisteredValue(
+                name,
                 () => getter(),
                 value => setter((T) value), 
                 typeof(T), 
@@ -55,13 +58,23 @@ public abstract class AbstractPacket
 
     public override string ToString()
     {
-        var sb = new StringBuilder(this.PacketType.ToString());
+        var sb = new StringBuilder(PacketType.ToString());
 
         sb.Append(" { ");
         
-        foreach (var registeredValue in RegisteredValues)
+        for (var i = 0; i < RegisteredValues.Count; i++)
         {
-            sb.Append($"{registeredValue.Value}, ");
+            var registeredValue = RegisteredValues[i]; 
+            if (registeredValue.FieldName == nameof(PacketType))
+            {
+                continue;
+            }
+            
+            sb.Append($"{registeredValue.FieldName}: {registeredValue.Value}");
+            if (i < RegisteredValues.Count - 1)
+            {
+                sb.Append(", ");
+            }
         }
         
         sb.Append(" }");

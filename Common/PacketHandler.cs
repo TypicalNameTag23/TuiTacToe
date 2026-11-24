@@ -10,22 +10,23 @@ namespace Common;
 
 public class PacketHandler
 {
-     private ulong _totalDataReceived;
-     private ulong _totalDataSent;
-     private uint _packetId;
+     private ulong _totalBytesReceived;
+     private ulong _totalBytesSent;
+     
+     private uint _packetIdCounter;
      private readonly TimeSpan _timeOut;
      private CancellationToken _cancellationToken;
 
      private readonly Dictionary<ulong, AbstractResponsePacket?> _pendingResponsePackets = [];
-     private readonly TcpClient _connection;
+     private readonly Stream _stream;
      private readonly PacketEncoder _encoder;
      private readonly PacketDecoder _decoder;
 
      public EventHandler<AbstractPacket>? OnPacketReceived;
 
-     public PacketHandler(TcpClient connection, PacketEncoder encoder, PacketDecoder decoder, TimeSpan timeOut)
+     public PacketHandler(Stream stream, PacketEncoder encoder, PacketDecoder decoder, TimeSpan timeOut)
      {
-          _connection = connection;
+          _stream = stream;
           _encoder = encoder;
           _decoder = decoder;
           _timeOut = timeOut;
@@ -35,7 +36,7 @@ public class PacketHandler
      {
           _cancellationToken = cancellationToken;
 
-          var networkProcessor = new NetworkStreamProcessor(_connection.GetStream(), ProcessIncomingData);
+          var networkProcessor = new NetworkStreamProcessor(_stream, ProcessIncomingData);
           await networkProcessor.StartAsync(cancellationToken);
      }
      
@@ -43,14 +44,17 @@ public class PacketHandler
      {
           if (packet is AbstractRespondablePacket responsePacket)
           {
-               responsePacket.Id = _packetId++;
+               responsePacket.Id = _packetIdCounter++;
                _pendingResponsePackets[responsePacket.Id] = null;
           }
           
           try
           {
-               await _connection.SendAsync(_encoder.Encode(packet), _cancellationToken);
-               Console.WriteLine($"Sent packet: {packet}");
+               var encoded = _encoder.Encode(packet);
+               await _stream.WriteAsync(encoded, _cancellationToken);
+               
+               _totalBytesSent += (uint) encoded.Length;
+               Console.WriteLine($"Sent packet: {packet} [Bytes Sent: {encoded.Length} | Total Bytes Sent: {_totalBytesSent}]");
           }
           catch (Exception e)
           {
@@ -98,7 +102,7 @@ public class PacketHandler
                     if (stopwatch.Elapsed > _timeOut)
                     {
                          stopwatch.Stop();
-                         _pendingResponsePackets.Remove(packet.Id, out var _);
+                         _pendingResponsePackets.Remove(packet.Id, out _);
                          return null;
                     }
                }
@@ -115,8 +119,8 @@ public class PacketHandler
                return -1;
           }
           
-          _totalDataReceived += (ulong) bytesRead;
-          Console.WriteLine($"Received packet: {packet} [{bytesRead}, {_totalDataReceived}]");
+          _totalBytesReceived += (ulong) bytesRead;
+          Console.WriteLine($"Received packet: {packet} [Bytes Received: {bytesRead} | Total Bytes Received: {_totalBytesReceived}]");
           if (packet is AbstractResponsePacket responsePacket 
               && _pendingResponsePackets.ContainsKey(responsePacket.Id))
           {

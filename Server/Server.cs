@@ -1,14 +1,18 @@
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using Common.Utilities;
 using Server.Data;
 using Server.Data.Models;
 
 namespace Server;
 
-public class Server(int port) : IDisposable
+public class Server(int port, X509Certificate2 certificate) : IDisposable
 {
+    private const int PollTimeoutMillis = 10;
+
     private TcpListener _listener;
     private readonly List<Session> _sessions = [];
     private readonly Dictionary<int, GameSession> _gameSessionMap = [];
@@ -50,8 +54,13 @@ public class Server(int port) : IDisposable
         while (_listener.Pending())
         {
             var client = _listener.AcceptTcpClient();
+            var ssl = new SslStream(client.GetStream());
+            ssl.AuthenticateAsServer(certificate);
+            
+            Console.WriteLine($"Server: {ssl.SslProtocol}, {ssl.NegotiatedCipherSuite}");
+            
             var session = new Session(
-                client, 
+                ssl, 
                 _leaderboardSource, 
                 CreateGameSession,
                 GetGameSession,

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using Common;
 using Common.Decoding;
@@ -9,7 +10,7 @@ using Common.Packets.Handshake;
 
 namespace Client.Game;
 
-public class ServerConnectionHandler
+public class ServerConnectionHandler : IDisposable
 {
      private readonly IPAddress _address;
      private readonly ushort _port;
@@ -23,6 +24,7 @@ public class ServerConnectionHandler
      public EventHandler<AbstractPacket>? OnPacketReceived;
      private readonly PacketEncoder _encoder;
      private readonly PacketDecoder _decoder;
+     private SslStream _ssl;
      public bool Connected => _server != null;
 
      public ServerConnectionHandler(IPAddress address, ushort port)
@@ -53,7 +55,13 @@ public class ServerConnectionHandler
           {
                _server = new TcpClient();
                await _server.ConnectAsync(_address, _port);
-               _packetProcessor = new PacketHandler(_server, _encoder, _decoder, TimeSpan.FromSeconds(5));
+               _ssl = new SslStream(_server.GetStream());
+               await _ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+               {
+                    RemoteCertificateValidationCallback = delegate { return true; }
+               });
+               
+               _packetProcessor = new PacketHandler(_ssl, _encoder, _decoder, TimeSpan.FromSeconds(5));
                _packetProcessor.OnPacketReceived += (s, p) => OnPacketReceived?.Invoke(s, p);
                _ = _packetProcessor.StartAsync(cancellationTokenSource.Token);
 
@@ -172,5 +180,12 @@ public class ServerConnectionHandler
           _server = null;
           
           OnConnectionClosed?.Invoke(this, EventArgs.Empty);
+     }
+
+     public void Dispose()
+     {
+          _cancellationTokenSource?.Dispose();
+          _server?.Dispose();
+          _ssl.Dispose();
      }
 }

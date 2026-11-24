@@ -5,7 +5,7 @@ using FxSsh.Services;
 
 namespace Client.Ssh;
 
-public class SshServer
+public class SshServer : IDisposable
 {
     private readonly ushort _port;
     private readonly IPAddress _backendAddress;
@@ -117,5 +117,10 @@ public class SshServer
         
         _clientSessionMap[client].Disconnect();
         _clientSessionMap.Remove(client);
+    }
+
+    public void Dispose()
+    {
+        _sshServer.Dispose();
     }
 }

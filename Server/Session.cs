@@ -26,7 +26,7 @@ public class Session : IDisposable
      private CancellationTokenSource _cancellationTokenSource;
      private PacketHandler _packetHandler;
      private DateTime _lastHeartbeat;
-     private TcpClient? _client;
+     private Stream? _clientStream;
      private readonly PacketEncoder _encoder;
      private readonly PacketDecoder _decoder;
 
@@ -37,14 +37,14 @@ public class Session : IDisposable
      public EventHandler<EventArgs>? OnDisconnect { get; set; }
 
      public Session(
-          TcpClient client, 
+          Stream clientStream, 
           ILeaderboardSource leaderboardSource,
           Func<Session, GameSession> createGameSession,
           Func<int, GameSession?> getGameSession,
           Func<string, string, Task<User?>> tryCreateUserAsync,
           Func<string, string, Task<User?>> validatePasswordAsync)
      {
-          _client = client;
+          _clientStream = clientStream;
           _leaderboardSource = leaderboardSource;
           _createGameSession = createGameSession;
           _getGameSession = getGameSession;
@@ -65,7 +65,7 @@ public class Session : IDisposable
      public async Task StartAsync()
      {
           _cancellationTokenSource = new CancellationTokenSource();
-          _packetHandler = new PacketHandler(_client!, _encoder, _decoder, TimeSpan.FromSeconds(5));
+          _packetHandler = new PacketHandler(_clientStream!, _encoder, _decoder, TimeSpan.FromSeconds(5));
           _packetHandler.OnPacketReceived += (_, packet) => _ = OnPacketReceivedAsync(packet);
           _lastHeartbeat = DateTime.UtcNow;
           
@@ -100,8 +100,8 @@ public class Session : IDisposable
           GameSession = null;
           
           await _packetHandler.TrySendAsync(new CloseConnectionPacket());
-          _client?.Close();
-          _client = null;
+          _clientStream?.Close();
+          _clientStream = null;
 
           await _cancellationTokenSource.CancelAsync();
           OnDisconnect?.Invoke(this, EventArgs.Empty);
@@ -120,7 +120,7 @@ public class Session : IDisposable
      public void Dispose()
      {
           _cancellationTokenSource.Dispose();
-          _client?.Dispose();
+          _clientStream?.Dispose();
      }
 
      private async Task OnPacketReceivedAsync(AbstractPacket packet)
@@ -169,7 +169,7 @@ public class Session : IDisposable
                }
                case PacketType.CloseConnection:
                {
-                    Console.WriteLine($"Client {_client!.Client.RemoteEndPoint} disconnected.");
+                    Console.WriteLine($"Client disconnected.");
                     await DisconnectAsync();
                     break;
                }
@@ -187,7 +187,7 @@ public class Session : IDisposable
                }
                default:
                {
-                    Console.WriteLine($"Received server side packet from client {_client!.Client.RemoteEndPoint}");
+                    Console.WriteLine($"Received server side packet from client");
                     if (packet is AbstractRespondablePacket p)
                     {
                          await _packetHandler.TrySendAsync(new DeniedPacket(p.Id));

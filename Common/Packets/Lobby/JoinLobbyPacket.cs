@@ -15,6 +15,6 @@ public class JoinLobbyPacket : AbstractRespondablePacket
     {
         base.RegisterValues();
         
-        RegisterFixedSizeValue(() => LobbyId, value => LobbyId = value, sizeof(int));
+        RegisterFixedSizeValue(nameof(LobbyId), () => LobbyId, value => LobbyId = value, sizeof(int));
     }
 }

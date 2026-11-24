@@ -8,7 +8,7 @@ using Painter.Platform;
 
 namespace Client.Game;
 
-public partial class Client(Terminal terminal, IPAddress serverAddress, ushort serverPort)
+public partial class Client(Terminal terminal, IPAddress serverAddress, ushort serverPort) : IDisposable
 {
     private Application _app;
 
@@ -105,5 +105,11 @@ public partial class Client(Terminal terminal, IPAddress serverAddress, ushort s
         }
         
         _app.QueueAction(() => { _contentDisplay.Content = new DisconnectedView(OnReconnectClickAsync); });
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Dispose();
+        _serverConnectionHandler.Dispose();
     }
 }

@@ -4,7 +4,7 @@ using System.Net.Sockets;
 
 namespace Common;
 
-public class NetworkStreamProcessor(NetworkStream stream, Func<ReadOnlySequence<byte>, int> processData)
+public class NetworkStreamProcessor(Stream stream, Func<ReadOnlySequence<byte>, int> processData)
 {
     private const int MinimumBufferSize = 512;
     
