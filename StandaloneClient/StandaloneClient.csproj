@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Client\Client.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="Painter">
+            <HintPath>Dependencies\Painter.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+</Project>
