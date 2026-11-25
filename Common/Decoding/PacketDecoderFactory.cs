@@ -10,15 +10,15 @@ namespace Common.Decoding;
 
 public class PacketDecoderFactory
 {
-    private Dictionary<PacketType, Func<AbstractPacket>> _registeredPackets = [];
     private Dictionary<Type, IValueDecoder> _registeredDecoders = [];
-    
+    private Dictionary<PacketType, Func<AbstractPacket>> _registeredPackets = [];
+
     public static PacketDecoderFactory New()
     {
         return new PacketDecoderFactory();
     }
 
-    public PacketDecoderFactory RegisterPacket(PacketType packetType, Func<AbstractPacket> factory)
+    public PacketDecoderFactory WithPacket(PacketType packetType, Func<AbstractPacket> factory)
     {
         _registeredPackets.Add(packetType, factory);
 
@@ -31,41 +31,51 @@ public class PacketDecoderFactory
 
         return this;
     }
-    
+
     public PacketDecoderFactory WithDefaultPackets()
     {
         #region Initial Handshake
-        RegisterPacket(PacketType.OpenConnection, () => new OpenConnectionPacket());
-        RegisterPacket(PacketType.Login, () => new LoginPacket());
-        RegisterPacket(PacketType.Register, () => new RegisterPacket());
+
+        WithPacket(PacketType.OpenConnection, () => new OpenConnectionPacket());
+        WithPacket(PacketType.Login, () => new LoginPacket());
+        WithPacket(PacketType.Register, () => new RegisterPacket());
+
         #endregion
 
         #region Lobby Management
-        RegisterPacket(PacketType.CreateLobby, () => new CreateLobbyPacket());
-        RegisterPacket(PacketType.JoinLobby, () => new JoinLobbyPacket());
-        RegisterPacket(PacketType.LeaveLobby, () => new LeaveLobbyPacket());
-        RegisterPacket(PacketType.LobbyCreationInformation, () => new LobbyCreationInformationPacket()); 
-        RegisterPacket(PacketType.LobbyJoinInformation, () => new LobbyJoinInformationPacket()); 
-        RegisterPacket(PacketType.OpponentConnected, () => new OpponentConnectedPacket()); 
-        RegisterPacket(PacketType.OpponentDisconnected, () => new OpponentDisconnectedPacket()); 
+
+        WithPacket(PacketType.CreateLobby, () => new CreateLobbyPacket());
+        WithPacket(PacketType.JoinLobby, () => new JoinLobbyPacket());
+        WithPacket(PacketType.LeaveLobby, () => new LeaveLobbyPacket());
+        WithPacket(PacketType.LobbyCreationInformation, () => new LobbyCreationInformationPacket());
+        WithPacket(PacketType.LobbyJoinInformation, () => new LobbyJoinInformationPacket());
+        WithPacket(PacketType.OpponentConnected, () => new OpponentConnectedPacket());
+        WithPacket(PacketType.OpponentDisconnected, () => new OpponentDisconnectedPacket());
+
         #endregion
 
         #region Game Management
-        RegisterPacket(PacketType.BoardPlayed, () => new BoardPlayedPacket());
-        RegisterPacket(PacketType.UpdateBoard, () => new UpdateBoardPacket());
-        RegisterPacket(PacketType.GameCompleted, () => new GameCompletedPacket());
+
+        WithPacket(PacketType.BoardPlayed, () => new BoardPlayedPacket());
+        WithPacket(PacketType.UpdateBoard, () => new UpdateBoardPacket());
+        WithPacket(PacketType.GameCompleted, () => new GameCompletedPacket());
+
         #endregion
 
         #region Leaderboard
-        RegisterPacket(PacketType.ViewLeaderboard, () => new ViewLeaderboardPacket());
-        RegisterPacket(PacketType.LeaderboardInformation, () => new LeaderboardInformationPacket());
+
+        WithPacket(PacketType.ViewLeaderboard, () => new ViewLeaderboardPacket());
+        WithPacket(PacketType.LeaderboardInformation, () => new LeaderboardInformationPacket());
+
         #endregion
 
         #region General
-        RegisterPacket(PacketType.Accepted, () => new AcceptedPacket());
-        RegisterPacket(PacketType.Denied, () => new DeniedPacket());
-        RegisterPacket(PacketType.CloseConnection, () => new CloseConnectionPacket());
-        RegisterPacket(PacketType.Heartbeat, () => new HeartbeatPacket());
+
+        WithPacket(PacketType.Accepted, () => new AcceptedPacket());
+        WithPacket(PacketType.Denied, () => new DeniedPacket());
+        WithPacket(PacketType.CloseConnection, () => new CloseConnectionPacket());
+        WithPacket(PacketType.Heartbeat, () => new HeartbeatPacket());
+
         #endregion
 
         return this;

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Common.Encoding.ValueEncoders;
 using Common.Packets;
 using Common.Utilities;
@@ -25,22 +24,30 @@ public class PacketEncoder(Dictionary<Type, IValueEncoder> valueEncoders)
                 {
                     throw new Exception($"Fixed size values can not be null!");
                 }
-                
+
                 encodedValue = encoder.Encode(registeredValue.Value);
-            } 
+            }
+            else if (registeredValue.Value == null)
+            {
+                encodedValue = [];
+                encodedValues.Add(BitConverters.GetBytesEndianIndependent(0));
+            }
             else
             {
-                if (registeredValue.Value == null)
+                encodedValue = encoder.Encode(registeredValue.Value);
+                if (registeredValue.Type == typeof(string))
                 {
-                    encodedValue = [];
-                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(0));
+                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(encodedValue.Length));
+                }
+                else if (registeredValue.Value is Array list)
+                {
+                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(list.Length));
                 }
                 else
                 {
-                    encodedValue = encoder.Encode(registeredValue.Value);
-                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(encodedValue.Length));
+                    throw new Exception($"Unknown type of non-fixed size {registeredValue.Type}");
                 }
-                
+
                 encodedDataLength += sizeof(int);
             }
 
@@ -50,7 +57,7 @@ public class PacketEncoder(Dictionary<Type, IValueEncoder> valueEncoders)
 
         var encodedPacket = new byte[encodedDataLength];
         encodedPacket.CopyInto(encodedValues);
-        
+
         return encodedPacket;
     }
 }

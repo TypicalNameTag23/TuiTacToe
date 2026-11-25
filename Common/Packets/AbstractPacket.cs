@@ -8,23 +8,23 @@ namespace Common.Packets;
 public abstract class AbstractPacket
 {
     public const int AbstractPacketBaseSize = sizeof(short);
-    
-    internal readonly List<RegisteredValue> RegisteredValues = [];
 
-    public PacketType PacketType { get; private set; }
+    internal readonly List<RegisteredValue> RegisteredValues = [];
 
     internal AbstractPacket()
     {
         RegisterValues();
     }
-    
+
     public AbstractPacket(PacketType packetType)
     {
         PacketType = packetType;
-        
+
         RegisterValues();
     }
-    
+
+    public PacketType PacketType { get; private set; }
+
     protected virtual void RegisterValues()
     {
         RegisterFixedSizeValue(
@@ -33,26 +33,37 @@ public abstract class AbstractPacket
             value => PacketType = value,
             sizeof(short));
     }
-    
+
     protected void RegisterFixedSizeValue<T>(string name, Func<T?> getter, Action<T> setter, int sizeBytes)
     {
         RegisteredValues.Add(
             new RegisteredValue(
                 name,
                 () => getter(),
-                value => setter((T) value), 
-                typeof(T), 
+                value => setter((T)value),
+                typeof(T),
                 sizeBytes));
     }
-    
+
     protected void RegisterDynamicSizeValue<T>(string name, Func<T?> getter, Action<T> setter)
     {
         RegisteredValues.Add(
             new RegisteredValue(
                 name,
                 () => getter(),
-                value => setter((T) value), 
-                typeof(T), 
+                value => setter((T)value),
+                typeof(T),
+                null));
+    }
+
+    protected void RegisterListValue<T>(string name, Func<List<T>?> getter, Action<List<T>> setter)
+    {
+        RegisteredValues.Add(
+            new RegisteredValue(
+                name,
+                () => getter(),
+                value => setter((List<T>)value),
+                typeof(T),
                 null));
     }
 
@@ -61,22 +72,22 @@ public abstract class AbstractPacket
         var sb = new StringBuilder(PacketType.ToString());
 
         sb.Append(" { ");
-        
+
         for (var i = 0; i < RegisteredValues.Count; i++)
         {
-            var registeredValue = RegisteredValues[i]; 
+            var registeredValue = RegisteredValues[i];
             if (registeredValue.FieldName == nameof(PacketType))
             {
                 continue;
             }
-            
+
             sb.Append($"{registeredValue.FieldName}: {registeredValue.Value}");
             if (i < RegisteredValues.Count - 1)
             {
                 sb.Append(", ");
             }
         }
-        
+
         sb.Append(" }");
         return sb.ToString();
     }
