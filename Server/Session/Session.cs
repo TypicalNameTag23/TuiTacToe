@@ -1,5 +1,5 @@
-using System.Net.Sockets;
 using Common;
+using Common.Coding.Decoding;
 using Common.Decoding;
 using Common.Encoding;
 using Common.Packets;
@@ -13,16 +13,11 @@ using Server.Data.Models;
 
 namespace Server;
 
-public class Session : IDisposable
+public partial class Session : IDisposable
 {
      private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(10);
      private static readonly TimeSpan HeartbeatCheckInterval = TimeSpan.FromSeconds(5);
      
-     private readonly Func<int, GameSession?> _getGameSession;
-     private readonly Func<Session, GameSession> _createGameSession;
-     private readonly Func<string, string, Task<User?>> _tryCreateUserAsync;
-     private readonly Func<User, Task<bool>> _tryUpdateUserAsync;
-     private readonly Func<string, string, Task<User?>> _validatePasswordAsync;
      private readonly ILeaderboardSource _leaderboardSource;
      
      private CancellationTokenSource _cancellationTokenSource;
@@ -31,10 +26,6 @@ public class Session : IDisposable
      private Stream? _clientStream;
      private readonly PacketEncoder _encoder;
      private readonly PacketDecoder _decoder;
-
-     public User? User { get; private set; }
-     public GameSession? GameSession { get; private set; }
-     public bool Authenticated => User != null;
 
      public EventHandler<EventArgs>? OnDisconnect { get; set; }
 
@@ -111,16 +102,6 @@ public class Session : IDisposable
           OnDisconnect?.Invoke(this, EventArgs.Empty);
      }
 
-     private async void OnBoardUpdatedAsync(object? sender, (Session, short, short) e)
-     {
-          if (e.Item1 == this)
-          {
-               return;
-          }
-
-          await _packetHandler.TrySendAsync(new UpdateBoardPacket(e.Item2, e.Item3));
-     }
-
      public void Dispose()
      {
           _cancellationTokenSource.Dispose();
@@ -134,7 +115,7 @@ public class Session : IDisposable
                case PacketType.OpenConnection:
                {
                     var p = (AbstractRespondablePacket)packet;
-                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id, new AcceptedPacket(123123123)));
+                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id));
                     break;
                }
                case PacketType.Register:
@@ -203,123 +184,5 @@ public class Session : IDisposable
                     break;
                }
           }
-     }
-
-     private async Task HandleBoardPlayedAsync(BoardPlayedPacket packet)
-     {
-          if (GameSession is null || !GameSession.PlayPosition(this, packet.X, packet.Y))
-          {
-               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
-               return;
-          }
-          
-          await _packetHandler.TrySendAsync(new AcceptedPacket(packet.Id));
-     }
-
-     private async Task JoinLobbyAsync(JoinLobbyPacket packet)
-     {
-          if (!Authenticated || GameSession != null)
-          {
-               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
-               return;
-          }
-          
-          GameSession = _getGameSession(packet.LobbyId);
-          if (GameSession == null)
-          {
-               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
-               return;
-          }
-
-          GameSession.Connect(this);
-          GameSession.OnGameCompleted += OnGameCompletedAsync; 
-          GameSession.OnOpponentDisconnected += OnOpponentDisconnectedAsync; 
-          GameSession.OnBoardUpdated += OnBoardUpdatedAsync; 
-          
-          await _packetHandler.TrySendAsync(new LobbyJoinInformationPacket(GameSession.Host!.User!.Username, packet.Id));
-          
-          throw new NotImplementedException();
-     }
-
-     private async Task RegisterAsync(RegisterPacket packet)
-     {
-          User = await _tryCreateUserAsync(packet.Username, packet.Password);
-          if (!Authenticated)
-          {
-               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
-               return;
-          }
-          
-          await _packetHandler.TrySendAsync(new AcceptedPacket(packet.Id));
-     }
-
-     private async Task LoginAsync(LoginPacket packet)
-     {
-          User = await _validatePasswordAsync(packet.Username, packet.Password);
-          if (!Authenticated)
-          {
-               await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
-               return;
-          }
-          
-          await _packetHandler.TrySendAsync(new AcceptedPacket(packet.Id));
-     }
-
-     private async Task HandleLeaveLobbyPacketAsync(uint id)
-     {
-          if (!Authenticated || GameSession == null)
-          {
-               await _packetHandler.TrySendAsync(new DeniedPacket(id));
-               return;
-          }
-          
-          GameSession.OnGameCompleted -= OnGameCompletedAsync; 
-          GameSession.OnGuestConnected -= OnOpponentConnectedAsync; 
-          GameSession.OnOpponentDisconnected -= OnOpponentDisconnectedAsync; 
-          GameSession.Disconnect(this);
-          GameSession = null;
-          await _packetHandler.TrySendAsync(new AcceptedPacket(id));
-     }
-
-     private async Task CreateLobbyAsync(uint id)
-     {
-          if (!Authenticated || GameSession != null)
-          {
-               await _packetHandler.TrySendAsync(new DeniedPacket(id));
-               return;
-          }
-                    
-          GameSession = _createGameSession(this);
-          GameSession.OnGameCompleted += OnGameCompletedAsync; 
-          GameSession.OnGuestConnected += OnOpponentConnectedAsync; 
-          GameSession.OnOpponentDisconnected += OnOpponentDisconnectedAsync; 
-          GameSession.OnBoardUpdated += OnBoardUpdatedAsync; 
-          
-          await _packetHandler.TrySendAsync(new LobbyCreationInformationPacket(GameSession.LobbyId, id));
-     }
-
-     private async void OnOpponentConnectedAsync(object? sender, Session session)
-     {
-          await _packetHandler.TrySendAsync(new OpponentConnectedPacket(session.User!.Username));
-     }
-
-     private async void OnOpponentDisconnectedAsync(object? sender, EventArgs e)
-     {
-          await _packetHandler.TrySendAsync(new OpponentDisconnectedPacket());
-     }
-
-     private async void OnGameCompletedAsync(object? sender, Session? winner)
-     {
-          await _packetHandler.TrySendAsync(new GameCompletedPacket(winner?.User?.Username));
-          if (winner == this)
-          {
-               User!.Wins += 1;
-               await _tryUpdateUserAsync(User);
-          }
-          
-          GameSession?.OnGameCompleted -= OnGameCompletedAsync; 
-          GameSession?.OnGuestConnected -= OnOpponentConnectedAsync; 
-          GameSession?.OnOpponentDisconnected -= OnOpponentDisconnectedAsync; 
-          GameSession = null;
      }
 }

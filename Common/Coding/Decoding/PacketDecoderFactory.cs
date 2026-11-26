@@ -1,6 +1,5 @@
-using Common.Coding;
 using Common.Coding.Coders;
-using Common.Decoding.ValueDecoders;
+using Common.Decoding;
 using Common.Packets;
 using Common.Packets.Game;
 using Common.Packets.Generic;
@@ -8,7 +7,7 @@ using Common.Packets.Handshake;
 using Common.Packets.Leaderboard;
 using Common.Packets.Lobby;
 
-namespace Common.Decoding;
+namespace Common.Coding.Decoding;
 
 public class PacketDecoderFactory
 {
@@ -93,7 +92,6 @@ public class PacketDecoderFactory
         WithCoder(new StringCoder());
         WithCoder(new ByteArrayCoder());
         WithCoder(new LeaderboardPlacementCoder());
-        WithCoder(new AbstractPacketCoder());
 
         return this;
     }

@@ -1,6 +1,5 @@
 using Common.Coding;
 using Common.Coding.Coders;
-using Common.Decoding.ValueDecoders;
 
 namespace Common.Encoding;
 
@@ -30,7 +29,6 @@ public class PacketEncoderFactory
         WithCoder(new StringCoder());
         WithCoder(new ByteArrayCoder());
         WithCoder(new LeaderboardPlacementCoder());
-        WithCoder(new AbstractPacketCoder());
 
         return this;
     }

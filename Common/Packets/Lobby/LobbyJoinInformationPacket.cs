@@ -2,25 +2,25 @@
 
 public class LobbyJoinInformationPacket : AbstractResponsePacket
 {
-    public string Username { get; private set; }
+    public string OpponentUsername { get; private set; }
 
     internal LobbyJoinInformationPacket() : base(PacketType.LobbyJoinInformation) { }
     
-    public LobbyJoinInformationPacket(string username, uint id) 
+    public LobbyJoinInformationPacket(string opponentUsername, uint id) 
         : base(id, PacketType.LobbyJoinInformation)
     {
-        if (username.Length > short.MaxValue)
+        if (opponentUsername.Length > short.MaxValue)
         {
-            throw new ArgumentException("Username is too long.", nameof(username));
+            throw new ArgumentException("Username is too long.", nameof(opponentUsername));
         }
         
-        Username = username;
+        OpponentUsername = opponentUsername;
     }
 
     protected override void RegisterValues()
     {
         base.RegisterValues();
         
-        RegisterDynamicSizeValue(nameof(Username), () => Username, value => Username = value);
+        RegisterDynamicSizeValue(nameof(OpponentUsername), () => OpponentUsername, value => OpponentUsername = value);
     }
 }

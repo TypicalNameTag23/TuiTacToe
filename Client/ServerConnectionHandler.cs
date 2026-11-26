@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using Common;
+using Common.Coding.Decoding;
 using Common.Decoding;
 using Common.Encoding;
 using Common.Packets;

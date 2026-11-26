@@ -6,8 +6,7 @@ public class LobbyCreationInformationPacket : AbstractResponsePacket
 
     internal LobbyCreationInformationPacket() : base(PacketType.LobbyCreationInformation) { }
     
-    public LobbyCreationInformationPacket(int lobbyId, uint id) 
-        : base(id, PacketType.LobbyCreationInformation)
+    public LobbyCreationInformationPacket(int lobbyId, uint id) : base(id, PacketType.LobbyCreationInformation)
     {
         LobbyId = lobbyId;
     }

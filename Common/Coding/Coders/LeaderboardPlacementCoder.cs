@@ -1,7 +1,6 @@
-using Common.Coding;
 using Common.Utilities;
 
-namespace Common.Decoding.ValueDecoders;
+namespace Common.Coding.Coders;
 
 public class LeaderboardPlacementCoder : ValueCoder<LeaderboardPlacement?>
 {
@@ -25,11 +24,8 @@ public class LeaderboardPlacementCoder : ValueCoder<LeaderboardPlacement?>
         }
 
         var decoded = new LeaderboardPlacement();
-        var bytesRead = decoder.TryDecodeInto(data[sizeof(int)..], decoded);
-
-        Console.WriteLine($"{bytesRead}, {sizeBytes}");
+        decoder.TryDecodeInto(data[sizeof(int)..], decoded);
         value.Value = decoded;
-        
         return sizeof(int) + sizeBytes;
     }
 }

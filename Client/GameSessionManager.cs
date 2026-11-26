@@ -1,6 +1,7 @@
 using Common;
 using Common.Packets;
 using Common.Packets.Game;
+using Common.Packets.Generic;
 using Common.Packets.Lobby;
 
 namespace Client;
@@ -42,12 +43,11 @@ public class GameSessionManager
         
         var packet = new CreateLobbyPacket();
         var response = await _connectionHandler.TrySendAndGetResponseAsync(packet);
-        if (response is not { PacketType: PacketType.LobbyCreationInformation })
+        if (response is not LobbyCreationInformationPacket lobbyCreationInfo)
         {
             return false;
         }
 
-        var lobbyCreationInfo = (LobbyCreationInformationPacket) response;
         LobbyCode = lobbyCreationInfo.LobbyId;
         PlayerType = PlayerType.X;
         InGame = true;
@@ -64,13 +64,12 @@ public class GameSessionManager
         
         var packet = new JoinLobbyPacket(code);
         var response = await _connectionHandler.TrySendAndGetResponseAsync(packet);
-        if (response is not { PacketType: PacketType.LobbyJoinInformation })
+        if (response is not LobbyJoinInformationPacket lobbyJoinInfo)
         {
             return false;
         }
 
-        var lobbyJoinInfo = (LobbyJoinInformationPacket) response;
-        OpponentUsername = lobbyJoinInfo.Username;
+        OpponentUsername = lobbyJoinInfo.OpponentUsername;
         PlayerType = PlayerType.O;
         InGame = true;
         

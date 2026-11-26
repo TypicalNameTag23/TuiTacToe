@@ -11,7 +11,7 @@ public class PacketEncoder
     public PacketEncoder(Dictionary<Type, IValueCoder> coders)
     {
         _encoder = new ValueEncoder(coders);
-    }
+    } 
 
     public PacketEncoder(ValueEncoder encoder)
     {

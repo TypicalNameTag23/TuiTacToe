@@ -1,8 +1,7 @@
-using Common.Coding;
 using Common.Coding.Exceptions;
 using Common.Utilities;
 
-namespace Common.Decoding.ValueDecoders;
+namespace Common.Coding.Coders;
 
 public class UIntCoder : ValueCoder<uint>
 {
