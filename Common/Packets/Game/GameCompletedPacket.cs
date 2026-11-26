@@ -11,11 +11,8 @@ public class GameCompletedPacket : AbstractPacket
         WinnerUsername = winnerUsername;
     }
     
-    
     protected override void RegisterValues()
     {
-        base.RegisterValues();
-
         RegisterDynamicSizeValue(nameof(WinnerUsername), () => WinnerUsername, value => WinnerUsername = value);
     }
 }

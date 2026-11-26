@@ -49,16 +49,16 @@ public static class Bytes
             return (uint) array.GetInt(start);
         }
 
-        public long GetLong(int start, int length)
+        public long GetLong(int start)
         {
-            var slice = array[start..(start + length)];
+            var slice = array[start..(start + sizeof(long))];
 
             return BitConverters.ToLongEndianIndependent(slice);
         }
 
-        public ulong GetULong(int start, int length)
+        public ulong GetULong(int start)
         {
-            return (ulong) array.GetLong(start, length);
+            return (ulong) array.GetLong(start);
         }
 
         public string GetString(int start, int length)

@@ -1,3 +1,5 @@
+using Common.Coding;
+using Common.Coding.Coders;
 using Common.Decoding.ValueDecoders;
 using Common.Packets;
 using Common.Packets.Game;
@@ -10,8 +12,8 @@ namespace Common.Decoding;
 
 public class PacketDecoderFactory
 {
-    private Dictionary<Type, IValueDecoder> _registeredDecoders = [];
-    private Dictionary<PacketType, Func<AbstractPacket>> _registeredPackets = [];
+    private readonly Dictionary<Type, IValueCoder> _registeredCoders = [];
+    private readonly Dictionary<PacketType, Func<AbstractPacket>> _registeredPackets = [];
 
     public static PacketDecoderFactory New()
     {
@@ -25,9 +27,9 @@ public class PacketDecoderFactory
         return this;
     }
 
-    public PacketDecoderFactory RegisterDecoder(IValueDecoder decoder)
+    public PacketDecoderFactory WithCoder(IValueCoder coder)
     {
-        _registeredDecoders.Add(decoder.Type, decoder);
+        _registeredCoders.Add(coder.Type, coder);
 
         return this;
     }
@@ -83,20 +85,21 @@ public class PacketDecoderFactory
 
     public PacketDecoderFactory WithDefaultDecoders()
     {
-        RegisterDecoder(new ShortDecoder());
-        RegisterDecoder(new IntegerDecoder());
-        RegisterDecoder(new LongDecoder());
-        RegisterDecoder(new UIntDecoder());
-        RegisterDecoder(new ULongDecoder());
-        RegisterDecoder(new StringValueDecoder());
-        RegisterDecoder(new ByteArrayValueDecoder());
-        RegisterDecoder(new LeaderboardPlacementValueDecoder());
+        WithCoder(new ShortCoder());
+        WithCoder(new IntegerCoder());
+        WithCoder(new LongCoder());
+        WithCoder(new UIntCoder());
+        WithCoder(new ULongCoder());
+        WithCoder(new StringCoder());
+        WithCoder(new ByteArrayCoder());
+        WithCoder(new LeaderboardPlacementCoder());
+        WithCoder(new AbstractPacketCoder());
 
         return this;
     }
 
     public PacketDecoder Create()
     {
-        return new PacketDecoder(_registeredPackets, _registeredDecoders);
+        return new PacketDecoder(_registeredPackets, _registeredCoders);
     }
 }

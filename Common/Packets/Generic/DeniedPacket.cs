@@ -2,7 +2,18 @@ namespace Common.Packets.Generic;
 
 public class DeniedPacket : AbstractResponsePacket
 {
-    internal DeniedPacket() : base(PacketType.Denied) { }
+    public string? Reason { get; private set; }
     
-    public DeniedPacket(uint id) : base(id, PacketType.Denied) { }
+    internal DeniedPacket() : base(PacketType.Denied) { }
+
+    public DeniedPacket(uint id, string? reason = null) : base(id, PacketType.Denied)
+    {
+        Reason = reason;
+    }
+
+    protected override void RegisterValues()
+    {
+        base.RegisterValues();
+        RegisterDynamicSizeValue(nameof(Reason), () => Reason, v => Reason = v);
+    }
 }

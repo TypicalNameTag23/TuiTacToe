@@ -3,7 +3,7 @@
 /// <summary>
 /// Enum describing packets types and their corresponding ids
 /// </summary>
-public enum PacketType : ushort
+public enum PacketType : short
 {
     #region Initial Handshake, 0-99
 

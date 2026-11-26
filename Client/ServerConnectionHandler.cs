@@ -159,6 +159,7 @@ public class ServerConnectionHandler : IDisposable
                     {
                          Console.WriteLine("Didn't receive heartbeat response from server, disconnecting.");
                          await CloseConnectionAsync();
+                         break;
                     }
                     
                     await Task.Delay(HeartbeatInterval);

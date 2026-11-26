@@ -113,7 +113,7 @@ public class PacketHandler
 
      private int ProcessIncomingData(ReadOnlySequence<byte> buffer)
      {
-          var bytesRead = _decoder.TryReadPacket(buffer, out var packet);
+          var bytesRead = _decoder.TryReadPacket([..buffer.FirstSpan], out var packet);
           if (bytesRead == -1)
           {
                return -1;

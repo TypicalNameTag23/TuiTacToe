@@ -134,7 +134,7 @@ public class Session : IDisposable
                case PacketType.OpenConnection:
                {
                     var p = (AbstractRespondablePacket)packet;
-                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id));
+                    await _packetHandler.TrySendAsync(new AcceptedPacket(p.Id, new AcceptedPacket(123123123)));
                     break;
                }
                case PacketType.Register:

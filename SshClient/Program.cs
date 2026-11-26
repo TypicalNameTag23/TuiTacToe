@@ -7,7 +7,7 @@ public static class Program
 {
     private static readonly IPAddress BackendServerAddress = IPAddress.Parse("127.0.0.1");
     private const ushort BackendServerPort = 4343;
-    private const ushort Port = 22;
+    private const ushort Port = 4342;
     
     public static async Task Main()
     {
