@@ -28,6 +28,7 @@ public class PacketEncoderFactory
         WithEncoder(new PacketTypeEncoder());
         WithEncoder(new StringValueEncoder());
         WithEncoder(new ByteArrayValueEncoder());
+        WithEncoder(new LeaderboardPlacementValueEncoder());
 
         return this;
     }

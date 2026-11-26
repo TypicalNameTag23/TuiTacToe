@@ -6,6 +6,7 @@ using Common.Packets;
 using Common.Packets.Game;
 using Common.Packets.Generic;
 using Common.Packets.Handshake;
+using Common.Packets.Leaderboard;
 using Common.Packets.Lobby;
 using Server.Data;
 using Server.Data.Models;
@@ -20,6 +21,7 @@ public class Session : IDisposable
      private readonly Func<int, GameSession?> _getGameSession;
      private readonly Func<Session, GameSession> _createGameSession;
      private readonly Func<string, string, Task<User?>> _tryCreateUserAsync;
+     private readonly Func<User, Task<bool>> _tryUpdateUserAsync;
      private readonly Func<string, string, Task<User?>> _validatePasswordAsync;
      private readonly ILeaderboardSource _leaderboardSource;
      
@@ -42,6 +44,7 @@ public class Session : IDisposable
           Func<Session, GameSession> createGameSession,
           Func<int, GameSession?> getGameSession,
           Func<string, string, Task<User?>> tryCreateUserAsync,
+          Func<User, Task<bool>> tryUpdateUserAsync,
           Func<string, string, Task<User?>> validatePasswordAsync)
      {
           _clientStream = clientStream;
@@ -49,6 +52,7 @@ public class Session : IDisposable
           _createGameSession = createGameSession;
           _getGameSession = getGameSession;
           _tryCreateUserAsync = tryCreateUserAsync;
+          _tryUpdateUserAsync = tryUpdateUserAsync;
           _validatePasswordAsync = validatePasswordAsync;
           _encoder = PacketEncoderFactory
                .New()
@@ -180,9 +184,12 @@ public class Session : IDisposable
                }
                case PacketType.ViewLeaderboard:
                {
-                    var leaderboard = await _leaderboardSource.GetLeaderboardAsync(5);
-                    // ...
+                    var leaderboard = await _leaderboardSource.GetLeaderboardAsync();
+                    var first = leaderboard.Count >= 1 ? leaderboard[0] : null;
+                    var s = leaderboard.Count >= 2 ? leaderboard[1] : null;
+                    var t = leaderboard.Count == 3 ? leaderboard[2] : null;
                     
+                    await _packetHandler.TrySendAsync(new LeaderboardInformationPacket(((AbstractRespondablePacket)packet).Id, first, s, t));
                     break;
                }
                default:
@@ -200,7 +207,7 @@ public class Session : IDisposable
 
      private async Task HandleBoardPlayedAsync(BoardPlayedPacket packet)
      {
-          if (GameSession is null || !GameSession!.PlayPosition(this, packet.X, packet.Y))
+          if (GameSession is null || !GameSession.PlayPosition(this, packet.X, packet.Y))
           {
                await _packetHandler.TrySendAsync(new DeniedPacket(packet.Id));
                return;
@@ -304,6 +311,11 @@ public class Session : IDisposable
      private async void OnGameCompletedAsync(object? sender, Session? winner)
      {
           await _packetHandler.TrySendAsync(new GameCompletedPacket(winner?.User?.Username));
+          if (winner == this)
+          {
+               User!.Wins += 1;
+               await _tryUpdateUserAsync(User);
+          }
           
           GameSession?.OnGameCompleted -= OnGameCompletedAsync; 
           GameSession?.OnGuestConnected -= OnOpponentConnectedAsync; 

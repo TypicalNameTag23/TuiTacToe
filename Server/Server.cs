@@ -9,17 +9,19 @@ using Server.Data.Models;
 
 namespace Server;
 
-public class Server(int port, X509Certificate2 certificate) : IDisposable
+public class Server(
+    int port, 
+    X509Certificate2 certificate, 
+    IUserRepository userRepository, 
+    ILeaderboardSource leaderboardSource) : IDisposable
 {
     private const int PollTimeoutMillis = 10;
 
     private TcpListener _listener;
     private readonly List<Session> _sessions = [];
     private readonly Dictionary<int, GameSession> _gameSessionMap = [];
-    
-    private ILeaderboardSource _leaderboardSource = new LeaderboardSource();
-    private IUserDatabase _userDatabase = new InMemoryUserDatabase();
-    private Random _random = new();
+
+    private readonly Random _random = new();
 
     public bool Running { get; private set; }
 
@@ -33,6 +35,7 @@ public class Server(int port, X509Certificate2 certificate) : IDisposable
         while (Running)
         {
             Poll();
+            Thread.Sleep(PollTimeoutMillis);
         }
     }
 
@@ -61,10 +64,11 @@ public class Server(int port, X509Certificate2 certificate) : IDisposable
             
             var session = new Session(
                 ssl, 
-                _leaderboardSource, 
+                leaderboardSource, 
                 CreateGameSession,
                 GetGameSession,
                 TryCreateUserAsync,
+                TryUpdateUserAsync,
                 ValidatePasswordAsync);
             session.OnDisconnect += OnSessionDisconnected;
             _ = session.StartAsync();
@@ -88,17 +92,16 @@ public class Server(int port, X509Certificate2 certificate) : IDisposable
     {
         try
         {
-            var user = await _userDatabase.GetUserAsync(username);
+            var user = await userRepository.GetUserAsync(username);
             if (user == null)
             {
                 return null;
             }
             
-            var hashedPassword = HashHelper.HashPassword(password, Convert.FromBase64String(user.Salt));
+            var hashedPassword = HashHelper.HashPassword(password, user.Salt);
             Console.WriteLine(Convert.ToBase64String(hashedPassword));
             Console.WriteLine(user.PasswordHash);
-            var a = CryptographicOperations.FixedTimeEquals(hashedPassword,
-                Convert.FromBase64String(user.PasswordHash));
+            var a = CryptographicOperations.FixedTimeEquals(hashedPassword,user.PasswordHash);
             Console.WriteLine(a);
             return a ? user : null;
         }
@@ -114,13 +117,11 @@ public class Server(int port, X509Certificate2 certificate) : IDisposable
     private async Task<User?> TryCreateUserAsync(string username, string password)
     {
         var hashedPassword = HashHelper.HashPassword(password, out var salt);
-        var passwordBase64 = Convert.ToBase64String(hashedPassword);
-        var saltBase64 = Convert.ToBase64String(salt);
         
-        var user = new User(username, passwordBase64, saltBase64);
+        var user = new User(username, hashedPassword, salt);
         try
         {
-            if (!await _userDatabase.CreateUserAsync(user))
+            if (!await userRepository.CreateUserAsync(user))
             {
                 return null;
             }
@@ -136,6 +137,22 @@ public class Server(int port, X509Certificate2 certificate) : IDisposable
         return user;
     }
 
+    private async Task<bool> TryUpdateUserAsync(User user)
+    {
+        try
+        {
+            await userRepository.UpdateUserAsync(user);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed to update user: {user.Username}");
+            Console.WriteLine(e);
+        }
+
+        return false;
+    }
+
     private GameSession CreateGameSession(Session session)
     {
         if (_gameSessionMap.Count >= 999_990_000)
@@ -147,7 +164,7 @@ public class Server(int port, X509Certificate2 certificate) : IDisposable
         var lobbyId = _random.Next(10_000, 1_000_000_000);
         while (_gameSessionMap.ContainsKey(lobbyId))
         {
-            lobbyId = _random.Next(10000, 99999);
+            lobbyId = _random.Next(10_000, 1_000_000_000);
         }
 
         var gameSession = new GameSession(lobbyId, session);

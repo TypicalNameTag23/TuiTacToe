@@ -26,12 +26,11 @@ public class SshServer : IDisposable
         {
             // jank but whatever
             var directory = Directory.GetCurrentDirectory();
-            while (!directory.EndsWith("TuiTacToe") && directory != $"{Path.PathSeparator}")
+            while (!directory.EndsWith("SshClient") && directory != $"{Path.PathSeparator}")
             {
                 directory = Directory.GetParent(directory)!.FullName;
             }
             
-            directory = Path.Join(directory, "Client");
             var configReader = new ConfigReader(Path.Join(directory, "config.txt"));
             _sshServer = new FxSsh.SshServer(new StartingInfo(IPAddress.Any, port, "SSH-2.0-tic-tac-toe"));
             _sshServer.AddHostKey("rea-sha2-256", configReader.ReadValue("RSA_KEY"));
@@ -40,9 +39,10 @@ public class SshServer : IDisposable
             _sshServer.AddHostKey("ecdsa-sha2-nistp384", configReader.ReadValue("EDCSA_NISTP384_KEY"));
             _sshServer.AddHostKey("ecdsa-sha2-nistp521", configReader.ReadValue("EDCSA_NISTP521_KEY"));
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            throw new Exception("Failed access keys from the config file, did you create it using the script?");
+            Console.WriteLine("Failed access keys from the config file, did you create it using the script?");
+            throw e;
         }
 
         _sshServer.ConnectionAccepted += OnConnectionAccepted;
@@ -65,7 +65,7 @@ public class SshServer : IDisposable
     
     private void OnConnectionAccepted(object? sender, Session session)
     {
-        Console.WriteLine($"SshClient connection accepted");
+        Console.WriteLine($"Connection accepted");
 
         session.ServiceRegistered += ServiceRegistered;
     }

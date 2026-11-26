@@ -14,10 +14,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StandaloneClient", "StandaloneClient\StandaloneClient.csproj", "{28238D44-1FD6-4FD9-8038-ED8C39F86B81}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{29364B98-7617-478B-B0B2-909817A1B831}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.Tests", "Common.Tests\Common.Tests.csproj", "{B0DF4E59-C99A-4905-8B8E-E1C674895FFF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,16 +44,15 @@ Global
 		{28238D44-1FD6-4FD9-8038-ED8C39F86B81}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28238D44-1FD6-4FD9-8038-ED8C39F86B81}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{28238D44-1FD6-4FD9-8038-ED8C39F86B81}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B0DF4E59-C99A-4905-8B8E-E1C674895FFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B0DF4E59-C99A-4905-8B8E-E1C674895FFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B0DF4E59-C99A-4905-8B8E-E1C674895FFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B0DF4E59-C99A-4905-8B8E-E1C674895FFF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{88FEE508-C34F-425B-89EF-779CC76D7208} = {1E539FE2-7554-48C7-8871-F4F702B7E199}
 		{9A12CDE4-C150-484B-AFB3-26E8D74566C7} = {1E539FE2-7554-48C7-8871-F4F702B7E199}
 		{28238D44-1FD6-4FD9-8038-ED8C39F86B81} = {1E539FE2-7554-48C7-8871-F4F702B7E199}
-		{0DB4AB87-F37F-41AE-9D45-C849B2072B1E} = {29364B98-7617-478B-B0B2-909817A1B831}
-		{B0DF4E59-C99A-4905-8B8E-E1C674895FFF} = {29364B98-7617-478B-B0B2-909817A1B831}
+	EndGlobalSection
+	GlobalSection(RiderSharedRunConfigurations) = postSolution
+		File = ..\..\Code\c-sharp\UnoApp1\.run\UnoApp1.run.xml
+		File = ..\Consolonia\src\.run\Local Nuget Build.run.xml
+		File = ..\..\IdeaProjects\Taxes\.run\desktop.run.xml
 	EndGlobalSection
 EndGlobal

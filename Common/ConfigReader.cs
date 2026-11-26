@@ -1,18 +1,38 @@
+using System.Text;
+
 namespace SshServer;
 
 /// <summary>
-/// Basic config reader made to read keys from a file
+/// Basic config reader
 /// </summary>
 /// <param name="filePath">The file path of the config</param>
-public class ConfigReader(string filePath)
+public class ConfigReader
 {
-    private const string BeginPrivateKeyText = "-----BEGIN PRIVATE KEY-----"; 
-    private const string EndPrivateKeyText = "-----END PRIVATE KEY-----"; 
-    // private const string EdcsaNistp256KeyText = "EDCSA_NISTP256_KEY"; 
-    // private const string EdcsaNistp384KeyText = "EDCSA_NISTP384_KEY"; 
-    // private const string EdcsaNistp521KeyText = "EDCSA_NISTP521_KEY"; 
+    private Dictionary<string, string> configValues = [];
     
-    private readonly string _fileContents = File.ReadAllText(filePath);
+    public ConfigReader(string filePath)
+    {
+        using var reader = File.OpenText(filePath);
+        while (!reader.EndOfStream)
+        {
+            var configEntry = reader.ReadLine()!;
+            
+            var line = reader.ReadLine();
+            if (line == null)
+            {
+                throw new Exception($"Unable to find value associated with config entry {configEntry}");
+            }
+            
+            var sb = new StringBuilder(line);
+            while (!reader.EndOfStream && !string.IsNullOrEmpty(line))
+            {
+                line = reader.ReadLine();
+                sb.AppendLine(line);
+            }
+            
+            configValues[configEntry] = sb.ToString();
+        }
+    }
 
     /// <summary>
     /// Name of the key to be read
@@ -26,18 +46,6 @@ public class ConfigReader(string filePath)
             return null;
         }
         
-        var index = _fileContents.IndexOf(value, StringComparison.InvariantCultureIgnoreCase);
-        if (index == -1)
-        {
-            return null;
-        }
-
-        var keyStartIndex = index + value.Length + 1;
-        var keyEndIndex = _fileContents.IndexOf(
-            EndPrivateKeyText, 
-            keyStartIndex, 
-            StringComparison.InvariantCultureIgnoreCase);
-
-        return _fileContents.Substring(keyStartIndex, keyEndIndex + EndPrivateKeyText.Length - keyStartIndex);
+        return configValues.GetValueOrDefault(value);
     }
 }

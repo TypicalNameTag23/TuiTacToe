@@ -90,6 +90,7 @@ public class PacketDecoderFactory
         RegisterDecoder(new ULongDecoder());
         RegisterDecoder(new StringValueDecoder());
         RegisterDecoder(new ByteArrayValueDecoder());
+        RegisterDecoder(new LeaderboardPlacementValueDecoder());
 
         return this;
     }

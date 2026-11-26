@@ -114,12 +114,21 @@ public partial class Application
 
     private async Task OnLeaderboardClickAsync()
     {
-        if (!await _serverConnectionHandler.TrySendAsync(new ViewLeaderboardPacket()))
+        if (_gameSessionManager.InGame || _contentDisplay.Content is not MainPageView view)
         {
             return;
         }
+
+        view.DisableButtons();
+        var packet = new ViewLeaderboardPacket();
+        var response = await _serverConnectionHandler.TrySendAndGetResponseAsync(packet);
+        if (response is not LeaderboardInformationPacket leaderboardPacket)
+        {
+            view.EnableButtons();
+            return;
+        }
         
-        _app.QueueAction(() => _contentDisplay.Content = new LeaderboardView());
+        _app.QueueAction(() => _contentDisplay.Content = new LeaderboardView(leaderboardPacket.FirstPlace, leaderboardPacket.SecondPlace, leaderboardPacket.ThirdPlace));
         UpdateCtrlCCloseKeyBindToBackKeyBind();
     }
 

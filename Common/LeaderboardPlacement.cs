@@ -1,3 +1,3 @@
 ﻿namespace Common;
 
-public record LeaderboardPlacement(string Username, uint Position, uint Wins);
+public record LeaderboardPlacement(string Username, int Wins);

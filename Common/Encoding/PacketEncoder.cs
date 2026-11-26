@@ -31,23 +31,12 @@ public class PacketEncoder(Dictionary<Type, IValueEncoder> valueEncoders)
             {
                 encodedValue = [];
                 encodedValues.Add(BitConverters.GetBytesEndianIndependent(0));
+                encodedDataLength += sizeof(int);
             }
             else
             {
                 encodedValue = encoder.Encode(registeredValue.Value);
-                if (registeredValue.Type == typeof(string))
-                {
-                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(encodedValue.Length));
-                }
-                else if (registeredValue.Value is Array list)
-                {
-                    encodedValues.Add(BitConverters.GetBytesEndianIndependent(list.Length));
-                }
-                else
-                {
-                    throw new Exception($"Unknown type of non-fixed size {registeredValue.Type}");
-                }
-
+                encodedValues.Add(BitConverters.GetBytesEndianIndependent(encodedValue.Length));
                 encodedDataLength += sizeof(int);
             }
 

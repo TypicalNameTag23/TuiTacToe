@@ -64,22 +64,26 @@ public class GameSession(int lobbyId, Session host)
             if (_board[i,0] != null && _board[i,1] == _board[i,0] && _board[i,2] == _board[i,0])
             {
                 OnGameCompleted?.Invoke(this, _currentPlayer);
+                return;
             }
              
             if (_board[0,i] != null && _board[1,i] == _board[0,i] && _board[2,i] == _board[0,i])
             {
                 OnGameCompleted?.Invoke(this, _currentPlayer);
+                return;
             }
         }
 
         if (_board[0,0] != null && _board[1,1] == _board[0,0] && _board[2,2] == _board[0,0])
         {
             OnGameCompleted?.Invoke(this, _currentPlayer);
+            return;
         }
 
         if (_board[0,2] != null && _board[1,1] == _board[0,2] && _board[2,0] == _board[0,2])
         {
             OnGameCompleted?.Invoke(this, _currentPlayer);
+            return;
         }
         
         var isBoardFilled = _board
