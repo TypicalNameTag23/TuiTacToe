@@ -16,7 +16,7 @@ public partial class Application
     
     private async Task OnLoginButtonClickAsync(string username, string password)
     {
-        if (_contentDisplay.Content is not LoginView view)
+        if (_contentDisplay.Content is not LoginView view || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
             return;
         }
@@ -93,15 +93,15 @@ public partial class Application
         UpdateCtrlCCloseKeyBindToBackKeyBind();
     }
     
-    private async Task OnJoinButtonClickAsync(int code)
+    private async Task OnJoinButtonClickAsync(int? code)
     {
-        if (_contentDisplay.Content is not JoinLobbyView view)
+        if (_contentDisplay.Content is not JoinLobbyView view || code is null)
         {
             return;
         }
 
         view.DisableButtons();
-        if (!await _gameSessionManager.TryJoinLobby(code))
+        if (!await _gameSessionManager.TryJoinLobby((int) code))
         {
             view.EnableButtons();
             return;
